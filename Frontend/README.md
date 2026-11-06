@@ -1,16 +1,26 @@
-# React + Vite
+# IncludeClima - Front-end
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Módulo de interface web para o sistema de Pesquisa de Clima Organizacional (PCO) da **Include Jr.**.
 
-Currently, two official plugins are available:
+## Tecnologias e Bibliotecas
+- **React + Vite:** Construção da interface componentizada e ambiente de desenvolvimento rápido.
+- **JavaScript (ES6+) & CSS3:** Linguagem base e estilização seguindo a identidade visual da Include Jr.
+- **React Router Dom:** Gerenciamento das rotas e controle de navegação por perfil (Membro, Líder e Admin).
+- **Axios:** Integração e consumo da API REST do Back-end.
+- **Recharts:** Renderização dos gráficos e métricas do Dashboard da diretoria.
+- **Lucide React:** Biblioteca de ícones da interface e menu lateral (Sidebar).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Estrutura de Pastas
+- `src/assets/`: Imagens, ícones e logotipos da Include Jr.
+- `src/components/`: Componentes reutilizáveis (Sidebar, Header, Escala Likert, Botões).
+- `src/contexts/`: Gerenciamento de estado global (Autenticação e sessão do usuário).
+- `src/pages/`: Telas principais da aplicação.
+- `src/routes/`: Configuração de rotas públicas e privadas.
+- `src/services/`: Configuração do cliente HTTP (Axios).
 
-## React Compiler
+## Como executar
+```bash
+cd Frontend
+npm install
+npm run dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
