@@ -1,0 +1,302 @@
+/* Fundo para Login e Cadastro */
+.auth-page {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--gradiente-auth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 24px;
+}
+
+/* Logo Include Jr no canto superior direito*/
+.auth-logo-top {
+  position: absolute;
+  top: 28px;
+  right: 42px;
+  height: 38px;
+  object-fit: contain;
+}
+
+/* Card principal do Login */
+.auth-card {
+  width: 894px;
+  max-width: 100%;
+  background: #FFFFFF;
+  border-radius: 23px;
+  box-shadow: 0 4px 4px 0 rgb(0 0 0 / 25%);
+  display: flex;
+  overflow: hidden;
+}
+
+.auth-card--login {
+  height: 484px;
+}
+
+.auth-card--cadastro {
+  height: 563px;
+}
+
+.auth-left {
+  width: 51%;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  border-radius: 23px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 44px;
+  color: #FFFFFF;
+}
+
+.auth-back-arrow {
+  position: absolute;
+  top: 22px;
+  left: 24px;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.auth-back-arrow:hover {
+  transform: translateX(-3px);
+}
+
+.auth-welcome-title {
+  font-family: var(--font-jomhuria);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 0.85;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.auth-brand-badge {
+  display: inline-block;
+  background: #5D1C07;
+  padding: 2px 14px 0px 10px;
+  border-radius: 6px;
+  width: fit-content;
+  margin-bottom: 8px;
+}
+
+.auth-brand-badge span {
+  font-family: var(--font-jomhuria);
+  font-size: 64px;
+  font-weight: 400;
+  line-height: 0.78;
+  color: #FFFFFF;
+  display: block;
+}
+
+.auth-welcome-desc {
+  font-family: var(--font-ubuntu);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #FFFFFF;
+  max-width: 280px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Metade direita com o formulário */
+.auth-right {
+  width: 49%;
+  padding: 42px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.auth-form-title {
+  font-family: var(--font-jomhuria);
+  font-size: 64px;
+  font-weight: 400;
+  color: #E02C00;
+  text-align: center;
+  line-height: 0.8;
+  margin-bottom: 28px;
+}
+
+.auth-input-group {
+  position: relative;
+  margin-bottom: 22px;
+  border-bottom: 1.5px solid #222222;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 8px 32px 8px 2px;
+  font-family: var(--font-ubuntu);
+  font-size: 16px;
+  color: #1A1A1A;
+  background: transparent;
+}
+
+.auth-input::placeholder {
+  color: #222222;
+  opacity: 0.85;
+}
+
+.auth-input-icon {
+  position: absolute;
+  right: 4px;
+  color: #1A1A1A;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Linha de Lembre-me e Esqueceu a senha */
+.auth-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-ubuntu);
+  font-size: 14px;
+  color: #222222;
+  margin-top: -4px;
+  margin-bottom: 28px;
+}
+
+.auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.auth-remember input {
+  accent-color: #E02C00;
+  cursor: pointer;
+}
+
+.auth-forgot {
+  color: #222222;
+  cursor: pointer;
+}
+
+.auth-forgot:hover {
+  text-decoration: underline;
+}
+
+/* Botão principal */
+.auth-submit-btn {
+  width: 170px;
+  height: 40px;
+  background: #E02C00;
+  color: #FFFFFF;
+  border-radius: 6px;
+  font-family: var(--font-jomhuria);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  padding-top: 4px;
+  transition: filter 0.2s;
+}
+
+.auth-submit-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* Link inferior para Cadastro */
+.auth-footer-text {
+  text-align: center;
+  margin-top: 22px;
+  font-family: var(--font-ubuntu);
+  font-size: 14px;
+  color: #222222;
+}
+
+.auth-footer-link {
+  font-family: var(--font-ubuntu);
+  font-size: 20px;
+  font-weight: 700;
+  color: #222222;
+  margin-left: 4px;
+  cursor: pointer;
+}
+
+.auth-footer-link:hover {
+  color: #E02C00;
+}
+
+/* POP-UP DE ERRO*/
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popup-erro {
+  width: 378px;
+  height: 276px;
+  background: #FFFFFF;
+  border-radius: 15px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 26px;
+  cursor: pointer;
+}
+
+.popup-erro__titulo {
+  font-family: var(--font-jomhuria);
+  font-size: 48px;
+  font-weight: 400;
+  line-height: 0.85;
+  color: #E02C00;
+  text-align: center;
+}
+
+.popup-erro__subtitulo {
+  font-family: var(--font-ubuntu);
+  font-size: 20px;
+  font-weight: 400;
+  color: #E02C00;
+  margin-top: 2px;
+}
+
+.popup-erro__wave-img {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 155px;
+  object-fit: cover;
+  object-position: top center;
+  pointer-events: none;
+}
+
+.popup-erro__texto {
+  position: absolute;
+  bottom: 18px;
+  left: 16px;
+  right: 16px;
+  font-family: var(--font-ubuntu);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #FFFFFF;
+  text-align: center;
+  z-index: 2;
+}
