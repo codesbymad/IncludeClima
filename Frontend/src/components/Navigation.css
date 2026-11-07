@@ -1,0 +1,117 @@
+/* HEADER SUPERIOR FIXO */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 72px;
+  background: var(--laranja-principal);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-header__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.app-header__brand {
+  font-family: var(--font-jomhuria);
+  font-size: 64px;
+  line-height: 0.8;
+  color: #FFFFFF;
+  padding-top: 6px;
+}
+
+.app-header__logo {
+  height: 32px;
+  object-fit: contain;
+}
+
+/* SIDEBAR */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+}
+
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 290px;
+  background: var(--laranja-principal);
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.25s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.app-sidebar__header {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 32px;
+  border-bottom: 2px solid #D63806;
+}
+
+.app-sidebar__close-btn {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.app-sidebar__brand {
+  font-family: var(--font-jomhuria);
+  font-size: 64px;
+  line-height: 0.8;
+  color: #FFFFFF;
+  padding-top: 6px;
+}
+
+.app-sidebar__nav {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-sidebar__link {
+  font-family: var(--font-ubuntu);
+  font-size: 24px;
+  color: #FFFFFF;
+  text-align: left;
+  padding: 16px 0 12px 0;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.app-sidebar__link:hover {
+  opacity: 0.8;
+}
