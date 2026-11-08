@@ -44,6 +44,7 @@ async function runSeed() {
       { enunciado: 'Sente que tem liberdade de expressao no seu ambiente de trabalho?', tipo: 'LIKERT', eixo: 'Liberdade de expressao' },
       { enunciado: 'Qual o seu nivel de satisfacao com os encontros presenciais?', tipo: 'LIKERT', eixo: 'Encontros presenciais' },
       { enunciado: 'Como avalia os beneficios oferecidos pela Include Jr.?', tipo: 'LIKERT', eixo: 'Beneficios oferecidos' },
+      { enunciado: 'Como avalia as oportunidades de crescimento na Include?', tipo: 'LIKERT', eixo: 'Oportunidades de crescimento' },
       { enunciado: 'Quais sao os principais desafios enfrentados no seu dia a dia?', tipo: 'TEXTO', eixo: 'Desafios enfrentados no dia a dia' }
     ];
 
@@ -94,10 +95,11 @@ async function runSeed() {
       }
     }
     console.log('Vinculos configurados.');
-
+    
     // 5. GERAR PARTICIPACOES E RESPOSTAS 
     console.log('5. A gerar massa de respostas ficticias');
-    const areasExistentes = ['Presidencia', 'Projetos', 'Comercial', 'Marketing', 'Gestao de Pessoas', 'Financeiro'];
+    // Lista com acentos exatos combinados com o front-end
+    const diretorias = ['Presidência', 'Projetos', 'Comercial', 'Marketing', 'Gestão de Pessoas', 'Financeiro'];
 
     for (const idPesq of idsPesquisas) {
       const linksResult = await pool.query('SELECT id, id_perg FROM pesquisa_perguntas WHERE id_pesq = $1', [idPesq]);
@@ -106,30 +108,45 @@ async function runSeed() {
         const checkPart = await pool.query('SELECT * FROM participacoes WHERE id_user = $1 AND id_pesq = $2', [idUser, idPesq]);
         
         if (checkPart.rows.length === 0) {
+          // Regista que o utilizador participou (Anonimato: desvincula o ID dos dados)
           await pool.query('INSERT INTO participacoes (id_user, id_pesq) VALUES ($1, $2)', [idUser, idPesq]);
           
-          const areaRandom = areasExistentes[Math.floor(Math.random() * areasExistentes.length)];
+          // Define qual é a área deste utilizador fictício para esta pesquisa
+          const areaDoUsuario = diretorias[Math.floor(Math.random() * diretorias.length)];
 
           for (const link of linksResult.rows) {
             const pergQuery = await pool.query('SELECT tipo FROM perguntas WHERE id_perg = $1', [link.id_perg]);
             const tipo = pergQuery.rows[0].tipo;
 
-            let valorNumerico = null;
-            let valorTexto = null;
+            let valor_numerico = null;
+            let valor_texto = null;
 
-            if (tipo === 'LIKERT') {
-              valorNumerico = Math.floor(Math.random() * 5) + 1;
-            } else if (tipo === 'DIRETORIA') {
-              valorTexto = areaRandom;
-            } else if (tipo === 'TEXTO') {
-              valorTexto = 'Resposta ficticia gerada para os relatorios de teste.';
+            // Corrige a variável de 'pergunta.tipo' para apenas 'tipo'
+            if (tipo === 'DIRETORIA') {
+              valor_texto = areaDoUsuario;
+            } 
+            else if (tipo === 'LIKERT') {
+              valor_numerico = Math.floor(Math.random() * 5) + 1; // Notas de 1 a 5
+            } 
+            else if (tipo === 'TEXTO') {
+              const feedbacks = [
+                'Sobrecarga: Muito volume de tarefas nesta última sprint.',
+                'Comunicação: Falta clareza nos repasses entre as diretorias.',
+                'Falta de recursos: O meu notebook trava com os programas de design.',
+                'Sobrecarga: Prazos muito curtos e acumulados.',
+                'Comunicação: Ruídos nas mensagens atrasam a resolução de dúvidas.',
+                'Falta de recursos: Precisamos de licenças premium para a equipa.',
+                'Tudo a correr bem, sem desafios críticos de momento.'
+              ];
+              valor_texto = feedbacks[Math.floor(Math.random() * feedbacks.length)];
             }
-
-            await pool.query(`
-              INSERT INTO respostas (pesquisa_pergunta_id, valor_numerico, valor_texto, area) 
-              VALUES ($1, $2, $3, $4)
-            `, [link.id, valorNumerico, valorTexto, areaRandom]);
-          }
+            
+            // INSERE DE FACTO AS RESPOSTAS NO BANCO (com a área vinculada)
+            await pool.query(
+              'INSERT INTO respostas (pesquisa_pergunta_id, valor_texto, valor_numerico, area) VALUES ($1, $2, $3, $4)',
+              [link.id, valor_texto, valor_numerico, areaDoUsuario]
+            );
+          }   
         }
       }
     }
