@@ -5,6 +5,7 @@ import Home from '../pages/Home/Home'
 import ResponderPesquisa from '../pages/Pesquisa/ResponderPesquisa'
 import CriarPesquisa from '../pages/Pesquisa/CriarPesquisa'
 import Resultados from '../pages/Resultados/Resultados'
+import ResultadosGerais from '../pages/Resultados/ResultadosGerais'
 
 export default function AppRoutes() {
   return (
@@ -16,6 +17,7 @@ export default function AppRoutes() {
       <Route path="/pesquisa/:id/responder" element={<ResponderPesquisa />} />
       <Route path="/pesquisas/criar" element={<CriarPesquisa />} />
       <Route path="/resultados" element={<Resultados />} />
+      <Route path="/resultados-gerais" element={<ResultadosGerais />} />
     </Routes>
   )
 }

@@ -43,9 +43,9 @@ export default function Sidebar({ isOpen, onClose }) {
           <button
             type="button"
             className="app-sidebar__link"
-            onClick={() => handleNavigate('/resultados')}
+            onClick={() => handleNavigate('/resultados-gerais')}
           >
-            Resultados
+            Resultados Gerais
           </button>
           <button
             type="button"
