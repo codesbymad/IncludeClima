@@ -1,11 +1,9 @@
 import { useNavigate } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { Menu, LogOut } from 'lucide-react'
 import './Navigation.css'
 
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
-
-  if (!isOpen) return null
 
   const handleNavigate = (path) => {
     navigate(path)
@@ -14,15 +12,20 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
-      {/* fundo escuro ao abrir a sidebar*/}
-      <div className="sidebar-overlay" onClick={onClose} />
+      <div
+        className={`sidebar-overlay ${
+          isOpen ? 'sidebar-overlay--open' : ''
+        }`}
+        onClick={onClose}
+      />
 
-      <aside className="app-sidebar">
+      <aside className={`app-sidebar ${isOpen ? 'app-sidebar--open' : ''}`}>
         <div className="app-sidebar__header">
           <button
             type="button"
             className="app-sidebar__close-btn"
             onClick={onClose}
+            title="Fechar Menu"
           >
             <Menu size={32} color="#FFFFFF" />
           </button>
@@ -52,6 +55,17 @@ export default function Sidebar({ isOpen, onClose }) {
             Criação de pesquisas
           </button>
         </nav>
+
+        <div className="app-sidebar__footer">
+          <button
+            type="button"
+            className="app-sidebar__logout-btn"
+            onClick={() => handleNavigate('/login')}
+          >
+            <LogOut size={24} />
+            <span>Sair da conta</span>
+          </button>
+        </div>
       </aside>
     </>
   )
