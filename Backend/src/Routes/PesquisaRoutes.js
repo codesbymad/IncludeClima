@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { listarPesquisas } from '../Controllers/PesquisaController.js';
+import PesquisaController from '../Controllers/PesquisaController.js';
+import RelatorioController from '../Controllers/RelatorioController.js';
 
 const router = Router();
 
-// Rota GET para listar todas as pesquisas
-router.get('/', listarPesquisas);
+// Rotas de Relatorios
+router.get('/:id_pesq/relatorios/medias', RelatorioController.getMedias);
+router.get('/:id_pesq/relatorios/feedbacks', RelatorioController.getFeedbacks);
 
 export default router;
