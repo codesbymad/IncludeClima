@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ArrowRight, ChevronDown } from 'lucide-react'
+import { Check, ArrowRight, ChevronDown, TrendingUp } from 'lucide-react'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -14,94 +14,46 @@ const GRUPOS_PESQUISAS = [
     trimestre: 'Quarto trimestre de 2026 - OUT/DEZ',
     pesquisas: [
       {
-        id: 1,
+        id: 3,
         titulo: 'Como está o clima na sua rotina?',
         descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
         periodo: '12/10/2026 - 05/11/2026',
-        mediaSatisfacao: '4,2 / 5,0 (Excelente)',
-        distribuicao: [
-          { label: 'Discordo totalmente', percentual: 5, cor: '#FF3434' },
-          { label: 'Discordo parcialmente', percentual: 10, cor: '#FF9860' },
-          { label: 'Não concordo nem discordo', percentual: 15, cor: '#FFEA60' },
-          { label: 'Concordo parcialmente', percentual: 40, cor: '#60FF72' },
-          { label: 'Concordo totalmente', percentual: 30, cor: '#2CA500' },
-        ],
       },
       {
         id: 2,
         titulo: 'Ventos de liderança: como está essa relação?',
         descricao: 'Pesquisa sobre relação com a liderança',
         periodo: '12/10/2026 - 05/11/2026',
-        mediaSatisfacao: '3,8 / 5,0 (Satisfatório)',
-        distribuicao: [
-          { label: 'Discordo totalmente', percentual: 10, cor: '#FF3434' },
-          { label: 'Discordo parcialmente', percentual: 15, cor: '#FF9860' },
-          { label: 'Não concordo nem discordo', percentual: 20, cor: '#FFEA60' },
-          { label: 'Concordo parcialmente', percentual: 35, cor: '#60FF72' },
-          { label: 'Concordo totalmente', percentual: 20, cor: '#2CA500' },
-        ],
       },
       {
-        id: 3,
+        id: 1,
         titulo: 'Clareza e eficiência na comunicação interna',
         descricao: 'Pesquisa sobre comunicação entre diretorias',
         periodo: '12/10/2026 - 05/11/2026',
-        mediaSatisfacao: '4,0 / 5,0 (Satisfatório)',
-        distribuicao: [
-          { label: 'Discordo totalmente', percentual: 5, cor: '#FF3434' },
-          { label: 'Discordo parcialmente', percentual: 15, cor: '#FF9860' },
-          { label: 'Não concordo nem discordo', percentual: 20, cor: '#FFEA60' },
-          { label: 'Concordo parcialmente', percentual: 30, cor: '#60FF72' },
-          { label: 'Concordo totalmente', percentual: 30, cor: '#2CA500' },
-        ],
       },
     ],
   },
   {
     id: 'q3-2026',
-    trimestre: 'Terceiro trimestre de 2026 - OUT/DEZ',
+    trimestre: 'Terceiro trimestre de 2026 - JUL/SET',
     pesquisas: [
       {
         id: 4,
         titulo: 'Como está o clima na sua rotina?',
         descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
         periodo: '12/07/2026 - 05/08/2026',
-        mediaSatisfacao: '2,7 / 5,0 (Atenção)',
-        distribuicao: [
-          { label: 'Discordo totalmente', percentual: 10, cor: '#FF3434' },
-          { label: 'Discordo parcialmente', percentual: 40, cor: '#FF9860' },
-          { label: 'Não concordo nem discordo', percentual: 20, cor: '#FFEA60' },
-          { label: 'Concordo parcialmente', percentual: 30, cor: '#60FF72' },
-          { label: 'Concordo totalmente', percentual: 0, cor: '#2CA500' },
-        ],
       },
       {
         id: 5,
         titulo: 'Ventos de liderança: como está essa relação?',
         descricao: 'Pesquisa sobre relação com a liderança',
         periodo: '12/07/2026 - 05/08/2026',
-        mediaSatisfacao: '3,1 / 5,0 (Satisfatório)',
-        distribuicao: [
-          { label: 'Discordo totalmente', percentual: 10, cor: '#FF3434' },
-          { label: 'Discordo parcialmente', percentual: 25, cor: '#FF9860' },
-          { label: 'Não concordo nem discordo', percentual: 25, cor: '#FFEA60' },
-          { label: 'Concordo parcialmente', percentual: 25, cor: '#60FF72' },
-          { label: 'Concordo totalmente', percentual: 15, cor: '#2CA500' },
-        ],
       },
       {
         id: 6,
         titulo: 'Clareza e eficiência na comunicação interna',
         descricao: 'Pesquisa sobre comunicação entre diretorias',
         periodo: '12/07/2026 - 05/08/2026',
-        mediaSatisfacao: '3,5 / 5,0 (Satisfatório)',
-        distribuicao: [
-          { label: 'Discordo totalmente', percentual: 5, cor: '#FF3434' },
-          { label: 'Discordo parcialmente', percentual: 20, cor: '#FF9860' },
-          { label: 'Não concordo nem discordo', percentual: 25, cor: '#FFEA60' },
-          { label: 'Concordo parcialmente', percentual: 30, cor: '#60FF72' },
-          { label: 'Concordo totalmente', percentual: 20, cor: '#2CA500' },
-        ],
       },
     ],
   },
@@ -110,6 +62,7 @@ const GRUPOS_PESQUISAS = [
 export default function ResultadosGerais() {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
 
   const [etapa, setEtapa] = useState('listagem')
   const [divisao, setDivisao] = useState('Trimestre')
@@ -128,7 +81,6 @@ export default function ResultadosGerais() {
     if (etapa === 'listagem') {
       setModalCompararOpen(true)
     } else if (etapa === 'selecionando') {
-      // Se o usuário não clicou em nenhum ainda, seleciona o primeiro por padrão para não travar
       if (!tituloEscolhido) {
         setTituloEscolhido('Como está o clima na sua rotina?')
       }
@@ -145,11 +97,140 @@ export default function ResultadosGerais() {
 
       <main className="general-results-container">
         {etapa === 'comparando' ? (
-          <section className="comparison-board-panel">
-            <div className="comparison-board-header">
-              <h1 className="comparison-board-title">
-                Comparativo: {tituloEscolhido}
-              </h1>
+          /* TELA DE COMPARATIVO DE PESQUISAS */
+          <section className="comparison-figma-card">
+            <div className="comparison-figma-top">
+              <div>
+                <h1 className="comparison-figma-title">
+                  Comparativo de pesquisas
+                </h1>
+                <p className="comparison-figma-subtitle">
+                  Pesquisa:{' '}
+                  {tituloEscolhido || 'Como está o clima na sua rotina?'}
+                </p>
+
+                <div className="comparison-period-section">
+                  <span className="comparison-small-label">
+                    Período das pesquisas
+                  </span>
+                  <div className="comparison-period-badges">
+                    <span className="comparison-period-pill">
+                      3º Trimestre de 2026
+                    </span>
+                    <span className="comparison-period-arrow">──────►</span>
+                    <span className="comparison-period-pill">
+                      4º Trimestre de 2026
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="comparison-responses-counts">
+                <div className="comparison-count-block">
+                  <span className="comparison-small-label">
+                    Primeira pesquisa
+                  </span>
+                  <strong className="comparison-count-number">
+                    10 Respostas
+                  </strong>
+                </div>
+                <div className="comparison-count-block">
+                  <span className="comparison-small-label">
+                    Segunda pesquisa
+                  </span>
+                  <strong className="comparison-count-number">
+                    11 Respostas
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Médias e Crescimento (+1,3) */}
+            <div className="comparison-averages-row">
+              <div className="comparison-avg-col">
+                <span className="comparison-small-label">
+                  Média da primeira pesquisa
+                </span>
+                <strong className="comparison-avg-value">2,73</strong>
+                <span className="comparison-avg-faixa">(Atenção)</span>
+              </div>
+
+              <div className="comparison-avg-col">
+                <span className="comparison-small-label">
+                  Média da segunda pesquisa
+                </span>
+                <strong className="comparison-avg-value">4,03</strong>
+                <span className="comparison-avg-faixa">(Excelente)</span>
+              </div>
+
+              <div className="comparison-avg-col">
+                <span className="comparison-small-label">Crescimento</span>
+                <strong className="comparison-growth-value">+1,3</strong>
+              </div>
+            </div>
+
+            {/* Barras de Evolução de Satisfação */}
+            <div className="comparison-evolution-section">
+              <h2 className="comparison-section-heading">
+                Evolução de satisfação
+              </h2>
+
+              <div className="comparison-bar-block">
+                <span className="comparison-small-label">Primeira pesquisa</span>
+                <div className="comparison-bar-line">
+                  <div className="comparison-bar-track">
+                    <div
+                      className="comparison-bar-fill comparison-bar-fill--first"
+                      style={{ width: '54.6%' }}
+                    />
+                  </div>
+                  <span className="comparison-bar-score">2,73/5</span>
+                </div>
+              </div>
+
+              <div className="comparison-bar-block">
+                <span className="comparison-small-label">Segunda pesquisa</span>
+                <div className="comparison-bar-line">
+                  <div className="comparison-bar-track">
+                    <div
+                      className="comparison-bar-fill comparison-bar-fill--second"
+                      style={{ width: '80.6%' }}
+                    />
+                  </div>
+                  <span className="comparison-bar-score">4,03/5</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Principais mudanças identificadas */}
+            <div className="comparison-changes-section">
+              <h2 className="comparison-section-heading">
+                Principais mudanças identificadas
+              </h2>
+
+              <div className="comparison-changes-list">
+                <div className="comparison-change-item">
+                  <span>Alinhamento das atividades</span>
+                  <span className="comparison-change-badge">+ 1,2</span>
+                </div>
+                <div className="comparison-change-item">
+                  <span>Distribuição de tarefas</span>
+                  <span className="comparison-change-badge">+ 1,4</span>
+                </div>
+                <div className="comparison-change-item">
+                  <span>Tempo para realização</span>
+                  <span className="comparison-change-badge">+ 1,4</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rodapé: Evolução positiva identificada */}
+            <div className="comparison-footer-row">
+              <div className="comparison-positive-status">
+                <TrendingUp size={24} />
+                <span>Evolução positiva identificada</span>
+              </div>
+
               <button
                 type="button"
                 className="comparison-back-btn"
@@ -159,61 +240,13 @@ export default function ResultadosGerais() {
                   setTituloEscolhido('')
                 }}
               >
-                Voltar para Resultados Gerais
+                Voltar
               </button>
-            </div>
-
-            <div className="comparison-grid">
-              {GRUPOS_PESQUISAS.flatMap((grupo) =>
-                grupo.pesquisas
-                  .filter((p) => p.titulo === tituloEscolhido)
-                  .map((pesquisa) => (
-                    <div key={pesquisa.id} className="comparison-item-card">
-                      <span className="comparison-item-quarter">
-                        {grupo.trimestre}
-                      </span>
-                      <h3 className="comparison-item-title">
-                        {pesquisa.titulo}
-                      </h3>
-                      <p className="survey-card__date">
-                        Período: {pesquisa.periodo} | Média:{' '}
-                        <strong>{pesquisa.mediaSatisfacao}</strong>
-                      </p>
-
-                      <div className="chart-wrapper" style={{ marginLeft: 8 }}>
-                        <span className="chart-y-label">% Respostas</span>
-                        <div className="chart-bars-container">
-                          {pesquisa.distribuicao.map((item) => (
-                            <div key={item.label} className="chart-bar-group">
-                              <span className="chart-bar-label">
-                                {item.label}
-                              </span>
-                              <div className="chart-bar-row">
-                                <div className="chart-bar-track">
-                                  <div
-                                    className="chart-bar-fill"
-                                    style={{
-                                      width: `${item.percentual}%`,
-                                      backgroundColor: item.cor,
-                                    }}
-                                  />
-                                </div>
-                                <span className="chart-bar-percent">
-                                  {item.percentual}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-              )}
             </div>
           </section>
         ) : (
           <>
-            <div className="general-top-bar">
+                  <div className="general-top-bar">
               {etapa === 'listagem' && (
                 <div className="general-filter-group">
                   <span className="general-top-label">Divisão por:</span>
@@ -224,24 +257,26 @@ export default function ResultadosGerais() {
                       onClick={() => setDropdownOpen(!dropdownOpen)}
                     >
                       <span>{divisao}</span>
-                      <ChevronDown size={24} />
+                      <ChevronDown size={20} color="#FFFFFF" />
                     </button>
 
                     {dropdownOpen && (
                       <div className="general-select-dropdown">
-                        {['Trimestre', 'Semestre', 'Ano'].map((opcao) => (
-                          <button
-                            key={opcao}
-                            type="button"
-                            className="general-select-option"
-                            onClick={() => {
-                              setDivisao(opcao)
-                              setDropdownOpen(false)
-                            }}
-                          >
-                            {opcao}
-                          </button>
-                        ))}
+                        {['Ano', 'Semestre', 'Trimestre', 'Mês', 'Semana'].map(
+                          (opcao) => (
+                            <button
+                              key={opcao}
+                              type="button"
+                              className="general-select-option"
+                              onClick={() => {
+                                setDivisao(opcao)
+                                setDropdownOpen(false)
+                              }}
+                            >
+                              {opcao}
+                            </button>
+                          )
+                        )}
                       </div>
                     )}
                   </div>
@@ -275,13 +310,10 @@ export default function ResultadosGerais() {
               </button>
             </div>
 
-
             {GRUPOS_PESQUISAS.map((grupo) => {
               const pesquisasVisiveis =
                 etapa === 'selecionados'
-                  ? grupo.pesquisas.filter(
-                      (p) => p.titulo === tituloEscolhido
-                    )
+                  ? grupo.pesquisas.filter((p) => p.titulo === tituloEscolhido)
                   : grupo.pesquisas
 
               if (pesquisasVisiveis.length === 0) return null
@@ -292,7 +324,6 @@ export default function ResultadosGerais() {
 
                   <div className="quarter-cards-list">
                     {pesquisasVisiveis.map((item) => {
-                      
                       const estaSelecionado =
                         etapa === 'selecionados'
                           ? true
@@ -339,7 +370,9 @@ export default function ResultadosGerais() {
                           <button
                             type="button"
                             className="survey-card__arrow-btn"
-                            onClick={() => navigate('/resultados')}
+                            onClick={() =>
+                              navigate(`/resultados?id_pesq=${item.id}`)
+                            }
                             title="Ver resultados detalhados"
                           >
                             <ArrowRight size={32} color="#000000" />
@@ -355,7 +388,6 @@ export default function ResultadosGerais() {
         )}
       </main>
 
-      {/* Pop-up : "Deseja iniciar comparação?"*/}
       <ConfirmModal
         isOpen={modalCompararOpen}
         title="Deseja iniciar comparação?"

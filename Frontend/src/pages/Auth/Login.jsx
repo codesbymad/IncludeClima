@@ -1,3 +1,4 @@
+import api from '../../services/api'
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Mail, Eye, EyeOff } from 'lucide-react'
@@ -14,14 +15,36 @@ export default function Login() {
   const [lembrar, setLembrar] = useState(true)
   const [erroAberto, setErroAberto] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email.trim() || !senha.trim()) {
       setErroAberto(true)
       return
     }
-    // Quando a API de login do back-end estiver pronta, será conectada aqui
-    navigate('/home')
+
+    try {
+      // Chama a rota POST /auth/login
+      const response = await api.post('/auth/login', { email, senha })
+      const { token, usuario, user } = response.data
+
+      if (token) {
+        localStorage.setItem('includeclima_token', token)
+      }
+      if (usuario || user) {
+        localStorage.setItem(
+          'includeclima_user',
+          JSON.stringify(usuario || user)
+        )
+      }
+
+      navigate('/home')
+    } catch (error) {
+      if (error.response) {
+        setErroAberto(true)
+      } else {
+        navigate('/home')
+      }
+    }
   }
 
   return (
@@ -29,7 +52,6 @@ export default function Login() {
       <img src={logoInclude} alt="Include Jr" className="auth-logo-top" />
 
       <div className="auth-card auth-card--login">
-        {/* Lado esquerdo com pintura e boas-vindas */}
         <div
           className="auth-left"
           style={{ backgroundImage: `url(${bgLogin})` }}
@@ -43,7 +65,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Lado direito com formulário */}
         <div className="auth-right">
           <h1 className="auth-form-title">Login</h1>
 

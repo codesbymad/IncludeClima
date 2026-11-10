@@ -1,3 +1,4 @@
+import api from '../../services/api'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react'
@@ -17,14 +18,24 @@ export default function Cadastro() {
   const [lembrar, setLembrar] = useState(true)
   const [erroAberto, setErroAberto] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     if (!nome.trim() || !email.trim() || !senha.trim() || senha !== confirmarSenha) {
       setErroAberto(true)
       return
     }
-    // após criar conta redireciona para o Login
-    navigate('/login')
+    
+    // Chama a rota POST /auth/cadastro
+    try {
+      await api.post('/auth/cadastro', { nome, email, senha })
+      navigate('/login')
+    } catch (error) {
+      if (error.response) {
+        setErroAberto(true)
+      } else {
+        navigate('/login')
+      }
+    }
   }
 
   return (

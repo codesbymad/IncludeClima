@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, LogOut } from 'lucide-react'
+import ConfirmModal from './ConfirmModal'
 import './Navigation.css'
 
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
+  const [modalSairOpen, setModalSairOpen] = useState(false)
 
   const handleNavigate = (path) => {
     navigate(path)
@@ -60,13 +63,27 @@ export default function Sidebar({ isOpen, onClose }) {
           <button
             type="button"
             className="app-sidebar__logout-btn"
-            onClick={() => handleNavigate('/login')}
+            onClick={() => setModalSairOpen(true)}
           >
             <LogOut size={24} />
             <span>Sair da conta</span>
           </button>
         </div>
       </aside>
+
+      {/* Pop-up do Figma novo: "Deseja sair do IncludeClima pirata?" */}
+      <ConfirmModal
+        isOpen={modalSairOpen}
+        title="Deseja sair do IncludeClima pirata?"
+        confirmText="Sair"
+        cancelText="Cancelar"
+        onConfirm={() => {
+          setModalSairOpen(false)
+          onClose()
+          navigate('/login')
+        }}
+        onCancel={() => setModalSairOpen(false)}
+      />
     </>
   )
 }

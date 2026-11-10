@@ -1,10 +1,28 @@
 import { useState } from 'react'
-import { Trash2, PlusCircle, Plus, X, ChevronDown, Calendar } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Trash2, Plus, ChevronDown, Calendar, Pin } from 'lucide-react'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
+import ConfirmModal from '../../components/ConfirmModal'
 import './Pesquisa.css'
 
-// Formata números digitados automaticamente para: DD/MM/AAAA - DD/MM/AAAA
+const DIRETORIAS_FIXAS = [
+  'Presidência',
+  'Projetos',
+  'Comercial',
+  'Marketing',
+  'Gestão de Pessoas',
+  'Financeiro',
+]
+
+const ESCALA_LIKERT_FIXA = [
+  'Muito insatisfeito(a)',
+  'Insatisfeito(a)',
+  'Neutro',
+  'Satisfeito(a)',
+  'Muito satisfeito(a)',
+]
+
 function formatarPeriodo(valor) {
   const numeros = valor.replace(/\D/g, '').slice(0, 16)
   let resultado = ''
@@ -18,14 +36,11 @@ function formatarPeriodo(valor) {
   return resultado
 }
 
-// Verifica se uma data DD/MM/AAAA existe de verdade no calendário
 function validarDataReal(diaStr, mesStr, anoStr) {
   const dia = parseInt(diaStr, 10)
   const mes = parseInt(mesStr, 10)
   const ano = parseInt(anoStr, 10)
-
   if (mes < 1 || mes > 12 || dia < 1 || dia > 31 || ano < 2024) return null
-
   const dataObj = new Date(ano, mes - 1, dia)
   if (
     dataObj.getFullYear() !== ano ||
@@ -37,64 +52,61 @@ function validarDataReal(diaStr, mesStr, anoStr) {
   return dataObj
 }
 
-// Valida o período completo digitado pelo usuário
 function validarPeriodoTexto(texto) {
   const numeros = texto.replace(/\D/g, '')
   if (numeros.length === 0) return ''
 
-  const hoje = new Date()
-  hoje.setHours(0, 0, 0, 0)
-
-  // Valida a primeira data assim que tiver 8 dígitos (DDMMAAAA)
   if (numeros.length >= 8) {
     const d1 = validarDataReal(
       numeros.slice(0, 2),
       numeros.slice(2, 4),
       numeros.slice(4, 8)
     )
-    if (!d1) {
-      return 'Data de início inválida. Verifique o dia e o mês informados.'
-    }
-    if (d1 < hoje) {
-      return 'A data de início não pode ser uma data que já passou.'
-    }
+    if (!d1) return 'Data de início inválida. Verifique o dia e o mês.'
 
-    // Valida a segunda data quando completar os 16 dígitos
     if (numeros.length === 16) {
       const d2 = validarDataReal(
         numeros.slice(8, 10),
         numeros.slice(10, 12),
         numeros.slice(12, 16)
       )
-      if (!d2) {
-        return 'Data de finalização inválida. Verifique o dia e o mês informados.'
-      }
+      if (!d2) return 'Data de finalização inválida. Verifique o dia e o mês.'
       if (d2 < d1) {
         return 'A data de finalização deve ser igual ou posterior à data de início.'
       }
     }
   }
-
   return ''
 }
 
 export default function CriarPesquisa() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Verifica se veio do botão "Reaplicar pesquisa" da tela de Resultados
+  const dadosReaplicacao = location.state?.reaplicar || null
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [titulo, setTitulo] = useState('')
-  const [descricao, setDescricao] = useState('')
+  const [titulo, setTitulo] = useState(
+    dadosReaplicacao ? dadosReaplicacao.titulo : ''
+  )
+  const [descricao, setDescricao] = useState(
+    dadosReaplicacao ? dadosReaplicacao.descricao : ''
+  )
   const [periodo, setPeriodo] = useState('')
   const [erroData, setErroData] = useState('')
   const [menuTipoAbertoId, setMenuTipoAbertoId] = useState(null)
+  const [modalCancelarOpen, setModalCancelarOpen] = useState(false)
 
-  const [perguntas, setPerguntas] = useState([
-    {
-      id: 1,
-      titulo: '',
-      tipo: 'multipla', // 'multipla' ou 'texto'
-      opcoes: ['Opção 1'],
-      obrigatoria: false,
-    },
-  ])
+  const [perguntas, setPerguntas] = useState(
+    dadosReaplicacao?.perguntas || [
+      {
+        id: 1,
+        titulo: '',
+        tipo: 'LIKERT', // 'LIKERT' (Múltipla escolha) ou 'TEXTO' (Qualitativa)
+      },
+    ]
+  )
 
   const handlePeriodoChange = (e) => {
     const formatado = formatarPeriodo(e.target.value)
@@ -108,9 +120,7 @@ export default function CriarPesquisa() {
       {
         id: Date.now(),
         titulo: '',
-        tipo: 'multipla',
-        opcoes: ['Opção 1'],
-        obrigatoria: false,
+        tipo: 'LIKERT',
       },
     ])
   }
@@ -133,54 +143,13 @@ export default function CriarPesquisa() {
     setMenuTipoAbertoId(null)
   }
 
-  const adicionarOpcao = (id) => {
-    setPerguntas((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? { ...p, opcoes: [...p.opcoes, `Opção ${p.opcoes.length + 1}`] }
-          : p
-      )
-    )
-  }
-
-  const atualizarOpcao = (perguntaId, indexOpcao, valor) => {
-    setPerguntas((prev) =>
-      prev.map((p) => {
-        if (p.id !== perguntaId) return p
-        const novasOpcoes = [...p.opcoes]
-        novasOpcoes[indexOpcao] = valor
-        return { ...p, opcoes: novasOpcoes }
-      })
-    )
-  }
-
-  const removerOpcao = (perguntaId, indexOpcao) => {
-    setPerguntas((prev) =>
-      prev.map((p) => {
-        if (p.id !== perguntaId || p.opcoes.length <= 1) return p
-        return {
-          ...p,
-          opcoes: p.opcoes.filter((_, idx) => idx !== indexOpcao),
-        }
-      })
-    )
-  }
-
-  const alternarObrigatoria = (id) => {
-    setPerguntas((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, obrigatoria: !p.obrigatoria } : p
-      )
-    )
-  }
-
   return (
     <div className="survey-page">
       <Header onOpenSidebar={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main className="survey-container">
-        {/* Card de Cabeçalho do Formuláriow */}
+        {/* Card de Cabeçalho do Formulário */}
         <section className="card-borda-externa builder-header-card">
           <input
             type="text"
@@ -189,8 +158,8 @@ export default function CriarPesquisa() {
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
           />
-          <input
-            type="text"
+          <textarea
+            rows={dadosReaplicacao ? 3 : 1}
             className="builder-desc-input"
             placeholder="Adicione descrição ao formulário"
             value={descricao}
@@ -199,11 +168,11 @@ export default function CriarPesquisa() {
 
           <div className="builder-date-wrapper">
             <div className="builder-date-field">
-              <Calendar size={22} color="#AD330E" />
+              <Calendar size={20} color="#FA4A15" />
               <input
                 type="text"
                 className="builder-date-input"
-                placeholder="Data de início - data de finalização (ex: 12/11/2026 - 30/11/2026)"
+                placeholder="Data de inicio - data de finalização"
                 value={periodo}
                 onChange={handlePeriodoChange}
               />
@@ -212,7 +181,24 @@ export default function CriarPesquisa() {
           </div>
         </section>
 
-        {/* Cards de Edição de Perguntas */}
+        <section className="card-borda-externa question-card">
+          <div className="question-card__top-row">
+            <h2 className="question-card__title">
+              Qual sua área de atuação/ diretoria na Include?
+            </h2>
+            <Pin size={28} className="question-card__pin-icon" />
+          </div>
+
+          <div className="question-card__options">
+            {DIRETORIAS_FIXAS.map((dir) => (
+              <div key={dir} className="likert-option likert-option--disabled">
+                <span className="likert-radio" />
+                <span>{dir}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {perguntas.map((pergunta) => (
           <section
             key={pergunta.id}
@@ -229,9 +215,17 @@ export default function CriarPesquisa() {
                     atualizarTituloPergunta(pergunta.id, e.target.value)
                   }
                 />
+                <button
+                  type="button"
+                  className="builder-inline-trash-btn"
+                  onClick={() => removerPergunta(pergunta.id)}
+                  title="Excluir pergunta"
+                >
+                  <Trash2 size={24} />
+                </button>
               </div>
 
-              {/* Bandeja seletora de tipo de pergunta */}
+              {/* Bandeja Múltipla escolha / Qualitativa */}
               <div className="builder-type-dropdown-wrap">
                 <button
                   type="button"
@@ -245,12 +239,12 @@ export default function CriarPesquisa() {
                   <div className="builder-type-badge__left">
                     <span className="builder-type-radio" />
                     <span>
-                      {pergunta.tipo === 'multipla'
+                      {pergunta.tipo === 'LIKERT'
                         ? 'Multipla escolha'
-                        : 'Resposta aberta'}
+                        : 'Texto aberto'}
                     </span>
                   </div>
-                  <ChevronDown size={22} color="#444444" />
+                  <ChevronDown size={22} color="#333333" />
                 </button>
 
                 {menuTipoAbertoId === pergunta.id && (
@@ -258,101 +252,51 @@ export default function CriarPesquisa() {
                     <button
                       type="button"
                       className={`builder-type-menu__item ${
-                        pergunta.tipo === 'multipla'
+                        pergunta.tipo === 'LIKERT'
                           ? 'builder-type-menu__item--active'
                           : ''
                       }`}
-                      onClick={() =>
-                        alterarTipoPergunta(pergunta.id, 'multipla')
-                      }
+                      onClick={() => alterarTipoPergunta(pergunta.id, 'LIKERT')}
                     >
                       <span className="builder-type-radio" />
-                      <span>Multipla escolha (Escala)</span>
+                      <span>Multipla escolha</span>
                     </button>
                     <button
                       type="button"
                       className={`builder-type-menu__item ${
-                        pergunta.tipo === 'texto'
+                        pergunta.tipo === 'TEXTO'
                           ? 'builder-type-menu__item--active'
                           : ''
                       }`}
-                      onClick={() => alterarTipoPergunta(pergunta.id, 'texto')}
+                      onClick={() => alterarTipoPergunta(pergunta.id, 'TEXTO')}
                     >
                       <span className="builder-type-radio" />
-                      <span>Resposta aberta (Qualitativa)</span>
+                      <span>Texto aberto (Qualitativa)</span>
                     </button>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Conteúdo dinâmico conforme o tipo selecionado */}
-            {pergunta.tipo === 'multipla' ? (
-              <div className="builder-options-list">
-                {pergunta.opcoes.map((opcao, idx) => (
-                  <div key={idx} className="builder-option-row">
-                    <span className="builder-option-circle" />
-                    <input
-                      type="text"
-                      className="builder-option-input"
-                      value={opcao}
-                      onChange={(e) =>
-                        atualizarOpcao(pergunta.id, idx, e.target.value)
-                      }
-                    />
-                    {pergunta.opcoes.length > 1 && (
-                      <button
-                        type="button"
-                        className="builder-remove-option-btn"
-                        onClick={() => removerOpcao(pergunta.id, idx)}
-                        title="Remover esta opção"
-                      >
-                        <X size={18} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                <button
-                  type="button"
-                  className="builder-add-option-btn"
-                  onClick={() => adicionarOpcao(pergunta.id)}
-                >
-                  <PlusCircle size={22} />
-                  <span>Adicionar nova opção</span>
-                </button>
-              </div>
-            ) : (
-              <div className="builder-open-text-preview">
-                Texto de resposta aberta (o membro digitará sua resposta aqui)
-              </div>
-            )}
-
-            <div className="builder-question-footer">
-              <div className="builder-footer-left">
-                <button
-                  type="button"
-                  className="builder-delete-btn"
-                  onClick={() => removerPergunta(pergunta.id)}
-                  title="Excluir pergunta inteira"
-                >
-                  <Trash2 size={28} />
-                </button>
-
-                <div
-                  className="builder-required-toggle"
-                  onClick={() => alternarObrigatoria(pergunta.id)}
-                >
-                  <div
-                    className={`toggle-track ${
-                      pergunta.obrigatoria ? 'toggle-track--active' : ''
-                    }`}
-                  >
-                    <div className="toggle-thumb" />
-                  </div>
-                  <span>Obrigatório</span>
+            <div className="builder-question-body-row">
+              {pergunta.tipo === 'LIKERT' ? (
+                <div className="question-card__options">
+                  {ESCALA_LIKERT_FIXA.map((opcao) => (
+                    <div
+                      key={opcao}
+                      className="likert-option likert-option--disabled"
+                    >
+                      <span className="likert-radio" />
+                      <span>{opcao}</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <div className="builder-open-text-preview">
+                  Resposta qualitativa aberta (o membro digitará seus desafios e
+                  experiências)
+                </div>
+              )}
 
               <button
                 type="button"
@@ -369,7 +313,38 @@ export default function CriarPesquisa() {
             </div>
           </section>
         ))}
+
+        {/* Botões inferiores de Cancelar e Publicar Pesquisa */}
+        <div className="builder-bottom-actions">
+          <button
+            type="button"
+            className="builder-btn-cancel"
+            onClick={() => setModalCancelarOpen(true)}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="builder-btn-publish"
+            onClick={() => navigate('/home')}
+          >
+            Publicar Pesquisa
+          </button>
+        </div>
       </main>
+
+      {/* Pop-up do Figma: "Cancelar criação de pesquisa? seus dados serão apagado" */}
+      <ConfirmModal
+        isOpen={modalCancelarOpen}
+        title="Cancelar criação de pesquisa? seus dados serão apagado"
+        confirmText="Continuar criação"
+        cancelText="Cancelar e apagar"
+        onConfirm={() => setModalCancelarOpen(false)}
+        onCancel={() => {
+          setModalCancelarOpen(false)
+          navigate('/home')
+        }}
+      />
     </div>
   )
 }
