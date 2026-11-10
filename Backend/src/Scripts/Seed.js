@@ -1,38 +1,49 @@
 import pool from '../Config/Database.js';
+import bcrypt from 'bcrypt';
 
 async function runSeed() {
   try {
     console.log('A iniciar o seed completo do IncludeClima...');
 
-    // 1. INSERIR USUARIOS 
-    console.log('1. A verificar usuarios');
+    // 1. INSERIR USUÁRIOS
+    console.log('1. A verificar/inserir usuarios');
     
-    // Inserir lider inicial
-    const emailLider = 'lider.teste@include.com';
+    const senhaHash = await bcrypt.hash('IncludeClima@2026', 10);
+    const senhaLiderHash = await bcrypt.hash('LiderIncludeClima@2026', 10);
+
+    const emailLider = 'teste.lider.includeclima@gmail.com';
     const checkLider = await pool.query('SELECT id_user FROM usuarios WHERE email = $1', [emailLider]);
     if (checkLider.rows.length === 0) {
       await pool.query(
-        "INSERT INTO usuarios (nome, email, senha, is_lider) VALUES ('Lider Include', $1, 'senha123', true)", 
-        [emailLider]
+        "INSERT INTO usuarios (nome, email, senha, is_lider) VALUES ('Lider Include', $1, $2, true)", 
+        [emailLider, senhaLiderHash]
       );
     }
 
-    // Inserir 5 usuarios 
     const idsParticipantes = [];
-    for (let i = 1; i <= 5; i++) {
-      const emailPart = `user${i}@include.com`;
+    const emailsComuns = [
+      'teste.includeclima@gmail.com',
+      'user2@include.com',
+      'user3@include.com',
+      'user4@include.com',
+      'user5@include.com'
+    ];
+
+    let contadorUser = 1;
+    for (const emailPart of emailsComuns) {
       const checkUser = await pool.query('SELECT id_user FROM usuarios WHERE email = $1', [emailPart]);
       if (checkUser.rows.length === 0) {
         const resUser = await pool.query(
-          "INSERT INTO usuarios (nome, email, senha, is_lider) VALUES ($1, $2, 'senha123', false) RETURNING id_user",
-          [`Usuario Teste ${i}`, emailPart]
+          "INSERT INTO usuarios (nome, email, senha, is_lider) VALUES ($1, $2, $3, false) RETURNING id_user",
+          [`Usuario Teste ${contadorUser}`, emailPart, senhaHash]
         );
         idsParticipantes.push(resUser.rows[0].id_user);
       } else {
         idsParticipantes.push(checkUser.rows[0].id_user);
       }
+      contadorUser++;
     }
-    console.log('Usuarios configurados.');
+    console.log('Usuarios configurados com hashes bcrypt.');
 
     // 2. INSERIR PERGUNTAS 
     console.log('2. A verificar Perguntas do Questionario');
@@ -56,17 +67,25 @@ async function runSeed() {
     }
     console.log('Perguntas fixas configuradas.');
 
-    // 3. INSERIR AS 3 EDICOES DA PESQUISA
+    // 3. INSERIR AS 3 EDIÇÕES DA PESQUISA
     console.log('3. A verificar Edicoes das Pesquisas (Q2, Q3, Q4 2026)...');
+    
+    const tituloPadrao = 'Pesquisa de Clima';
     const edicoes = [
-      { titulo: 'Pesquisa de Clima - 2 Trimestre 2026', desc: 'Edicao Q2 2026 (Dados de Teste)', inicio: '2026-04-01', fim: '2026-06-30' },
-      { titulo: 'Pesquisa de Clima - 3 Trimestre 2026', desc: 'Edicao Q3 2026 (Dados de Teste)', inicio: '2026-07-01', fim: '2026-09-30' },
-      { titulo: 'Pesquisa de Clima - 4 Trimestre 2026', desc: 'Edicao Q4 2026 (Dados de Teste)', inicio: '2026-10-01', fim: '2026-12-31' }
+      { titulo: tituloPadrao, desc: 'Edicao Q2 2026 (Dados de Teste)', inicio: '2026-04-01', fim: '2026-06-30' },
+      { titulo: tituloPadrao, desc: 'Edicao Q3 2026 (Dados de Teste)', inicio: '2026-07-01', fim: '2026-09-30' },
+      { titulo: tituloPadrao, desc: 'Edicao Q4 2026 (Dados de Teste)', inicio: '2026-10-01', fim: '2026-12-31' }
     ];
 
     const idsPesquisas = [];
     for (const edicao of edicoes) {
-      const checkPesq = await pool.query('SELECT id_pesq FROM pesquisas WHERE titulo = $1', [edicao.titulo]);
+      const checkPesq = await pool.query(`
+        SELECT id_pesq FROM pesquisas 
+        WHERE titulo = $1 
+        AND EXTRACT(YEAR FROM data_inicio) = EXTRACT(YEAR FROM $2::DATE)
+        AND EXTRACT(QUARTER FROM data_inicio) = EXTRACT(QUARTER FROM $2::DATE)
+      `, [edicao.titulo, edicao.inicio]);
+
       if (checkPesq.rows.length === 0) {
         const result = await pool.query(`
           INSERT INTO pesquisas (titulo, descricao, data_inicio, data_fim) 
@@ -77,9 +96,9 @@ async function runSeed() {
         idsPesquisas.push(checkPesq.rows[0].id_pesq);
       }
     }
-    console.log('Edicoes da pesquisa configuradas.');
+    console.log('Edicoes da pesquisa configuradas com titulos padronizados.');
 
-    // 4. VINCULAR PERGUNTAS AS PESQUISAS
+    // 4. VINCULAR PERGUNTAS ÀS PESQUISAS
     console.log('4. A vincular perguntas as pesquisas');
     const perguntasResult = await pool.query('SELECT id_perg FROM perguntas');
     const todasPerguntas = perguntasResult.rows;
@@ -94,11 +113,10 @@ async function runSeed() {
         posicao++;
       }
     }
-    console.log('Vinculos configurados.');
+    console.log('Vinculos de perguntas configurados.');
     
-    // 5. GERAR PARTICIPACOES E RESPOSTAS 
-    console.log('5. A gerar massa de respostas ficticias');
-    // Lista com acentos exatos combinados com o front-end
+    // 5. GERAR PARTICIPAÇÕES E RESPOSTAS 
+    console.log('5. A gerar massa de respostas ficticias (Anonimizadas)');
     const diretorias = ['Presidência', 'Projetos', 'Comercial', 'Marketing', 'Gestão de Pessoas', 'Financeiro'];
 
     for (const idPesq of idsPesquisas) {
@@ -108,10 +126,8 @@ async function runSeed() {
         const checkPart = await pool.query('SELECT * FROM participacoes WHERE id_user = $1 AND id_pesq = $2', [idUser, idPesq]);
         
         if (checkPart.rows.length === 0) {
-          // Regista que o utilizador participou (Anonimato: desvincula o ID dos dados)
           await pool.query('INSERT INTO participacoes (id_user, id_pesq) VALUES ($1, $2)', [idUser, idPesq]);
           
-          // Define qual é a área deste utilizador fictício para esta pesquisa
           const areaDoUsuario = diretorias[Math.floor(Math.random() * diretorias.length)];
 
           for (const link of linksResult.rows) {
@@ -121,12 +137,11 @@ async function runSeed() {
             let valor_numerico = null;
             let valor_texto = null;
 
-            // Corrige a variável de 'pergunta.tipo' para apenas 'tipo'
             if (tipo === 'DIRETORIA') {
               valor_texto = areaDoUsuario;
             } 
             else if (tipo === 'LIKERT') {
-              valor_numerico = Math.floor(Math.random() * 5) + 1; // Notas de 1 a 5
+              valor_numerico = Math.floor(Math.random() * 5) + 1; // Random 1 a 5
             } 
             else if (tipo === 'TEXTO') {
               const feedbacks = [
@@ -141,7 +156,6 @@ async function runSeed() {
               valor_texto = feedbacks[Math.floor(Math.random() * feedbacks.length)];
             }
             
-            // INSERE DE FACTO AS RESPOSTAS NO BANCO (com a área vinculada)
             await pool.query(
               'INSERT INTO respostas (pesquisa_pergunta_id, valor_texto, valor_numerico, area) VALUES ($1, $2, $3, $4)',
               [link.id, valor_texto, valor_numerico, areaDoUsuario]
@@ -150,8 +164,13 @@ async function runSeed() {
         }
       }
     }
-    console.log('Respostas geradas com sucesso.');
+    console.log('Respostas ficticias geradas com sucesso.');
+    console.log('==========================================');
     console.log('SEED CONCLUIDO! O banco esta pronto para testes.');
+    console.log('Usuarios validos para login:');
+    console.log(' - teste.lider.includeclima@gmail.com (Líder)');
+    console.log(' - teste.includeclima@gmail.com (Usuário Comum)');
+    console.log('==========================================');
 
   } catch (erro) {
     console.error('Erro ao executar o seed:', erro);
