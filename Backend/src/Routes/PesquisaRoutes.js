@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import PesquisaController from '../Controllers/PesquisaController.js';
 import RelatorioController from '../Controllers/RelatorioController.js';
+import auth from '../Middlewares/Auth.js'
+import apenasLider from '../Middlewares/ApenasLider.js';
 
 const router = Router();
 
@@ -10,6 +12,8 @@ const router = Router();
  * @openapi
  * /pesquisas/{id_pesq}/relatorios/medias:
  *   get:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Obtém as médias e métricas da pesquisa
  *     tags: [Relatórios]
  *     parameters:
@@ -28,16 +32,22 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Relatório de médias gerado com sucesso
+ *       401:
+ *         description: Token não informado, inválido ou expirado
+ *       403:
+ *         description: Acesso restrito a líderes
  *       500:
  *         description: Erro ao gerar relatório de médias
  */
 
-router.get('/:id_pesq/relatorios/medias', RelatorioController.getMedias);
+router.get('/:id_pesq/relatorios/medias', auth, apenasLider, RelatorioController.getMedias);
 
 /**
  * @openapi
  * /pesquisas/{id_pesq}/relatorios/feedbacks:
  *   get:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Obtém os feedbacks textuais da pesquisa
  *     tags: [Relatórios]
  *     parameters:
@@ -56,10 +66,14 @@ router.get('/:id_pesq/relatorios/medias', RelatorioController.getMedias);
  *     responses:
  *       200:
  *         description: Feedbacks agrupados por categoria
+ *       401:
+ *         description: Token não informado, inválido ou expirado
+ *       403:
+ *         description: Acesso restrito a líderes
  *       500:
  *         description: Erro ao buscar feedbacks qualitativos
  */
 
-router.get('/:id_pesq/relatorios/feedbacks', RelatorioController.getFeedbacks);
+router.get('/:id_pesq/relatorios/feedbacks', auth, apenasLider, RelatorioController.getFeedbacks);
 
 export default router;
