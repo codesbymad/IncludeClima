@@ -29,7 +29,7 @@ class PesquisaController {
   // 2. Lista com Situação, Busca por Nome e "Já Respondi"
   async listarHistorico(req, res) {
     const { titulo } = req.query;
-    const userId = req.user.id; // Vem da autenticação
+    const userId = req.usuario.id; 
 
     try {
       let query = `
