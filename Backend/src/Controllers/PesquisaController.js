@@ -110,6 +110,28 @@ class PesquisaController {
         });
       }
 
+      const duplicidadeResult = await cliente.query(`
+        SELECT id_pesq
+        FROM pesquisas
+        WHERE titulo = $1
+          AND data_inicio = $2::DATE
+          AND data_fim = $3::DATE
+        LIMIT 1
+      `, [
+        titulo.trim(),
+        data_inicio,
+        data_fim
+      ]);
+
+      if (duplicidadeResult.rows.length > 0) {
+        await cliente.query('ROLLBACK');
+        transacaoAberta = false;
+
+        return res.status(400).json({
+          erro: 'Já existe uma pesquisa com este título e estas mesmas datas.'
+        });
+      }
+
       const pesquisaResult = await cliente.query(`
         INSERT INTO pesquisas
           (titulo, descricao, data_inicio, data_fim)
@@ -323,7 +345,6 @@ class PesquisaController {
         });
       }
 
-      // Bloqueia somente quando título e as duas datas são iguais.
       const duplicidadeResult = await cliente.query(`
         SELECT id_pesq
         FROM pesquisas
@@ -360,7 +381,6 @@ class PesquisaController {
 
       const novaPesquisa = novaPesquisaResult.rows[0];
 
-      // Copia as perguntas e mantém a ordem da pesquisa original.
       await cliente.query(`
         INSERT INTO pesquisa_perguntas
           (id_pesq, id_perg, posicao)
