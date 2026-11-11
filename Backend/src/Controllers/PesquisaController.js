@@ -29,7 +29,7 @@ class PesquisaController {
   // 2. Lista com Situação, Busca por Nome e "Já Respondi"
   async listarHistorico(req, res) {
     const { titulo } = req.query;
-    const userId = req.user.id; // Vem da autenticação
+    const userId = req.usuario.id; 
 
     try {
       let query = `
@@ -87,6 +87,56 @@ class PesquisaController {
     } catch (erro) {
       console.error(erro);
       return res.status(500).json({ erro: 'Erro ao buscar perguntas.' });
+    }
+  }
+  // 4. Reaplicar (Duplicar) Pesquisa
+  async reaplicarPesquisa(req, res) {
+    const { id } = req.params; // ID da pesquisa antiga
+    const { descricao, data_inicio, data_fim } = req.body;
+
+    try {
+      const pesqOriginal = await pool.query('SELECT titulo FROM pesquisas WHERE id_pesq = $1', [id]);
+      
+      if (pesqOriginal.rows.length === 0) {
+        return res.status(404).json({ erro: 'Pesquisa original não encontrada.' });
+      }
+      const tituloOriginal = pesqOriginal.rows[0].titulo;
+
+      const checkTrimestre = await pool.query(`
+        SELECT id_pesq FROM pesquisas 
+        WHERE titulo = $1 
+        AND EXTRACT(YEAR FROM data_inicio) = EXTRACT(YEAR FROM $2::DATE)
+        AND EXTRACT(QUARTER FROM data_inicio) = EXTRACT(QUARTER FROM $2::DATE)
+      `, [tituloOriginal, data_inicio]);
+
+      if (checkTrimestre.rows.length > 0) {
+        return res.status(400).json({ 
+          erro: 'Já existe uma edição desta pesquisa para este mesmo trimestre e ano.' 
+        });
+      }
+
+
+      const novaPesquisaResult = await pool.query(
+        'INSERT INTO pesquisas (titulo, descricao, data_inicio, data_fim) VALUES ($1, $2, $3, $4) RETURNING *',
+        [tituloOriginal, descricao, data_inicio, data_fim]
+      );
+      const novaPesquisa = novaPesquisaResult.rows[0];
+
+      await pool.query(`
+        INSERT INTO pesquisa_perguntas (id_pesq, id_perg, posicao) 
+        SELECT $1, id_perg, posicao 
+        FROM pesquisa_perguntas 
+        WHERE id_pesq = $2
+      `, [novaPesquisa.id_pesq, id]);
+
+      return res.status(201).json({ 
+        mensagem: 'Pesquisa reaplicada com sucesso!', 
+        pesquisa: novaPesquisa 
+      });
+
+    } catch (erro) {
+      console.error(erro);
+      return res.status(500).json({ erro: 'Erro ao reaplicar pesquisa.' });
     }
   }
 }
