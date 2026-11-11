@@ -1,0 +1,14 @@
+BEGIN;
+UPDATE perguntas SET enunciado = 'Como avalia a sua satisfação com a rotina e as tarefas?' WHERE enunciado = 'Como avalia a sua satisfacao com a rotina e as tarefas?';
+UPDATE perguntas SET enunciado = 'Como avalia a sua relação com a liderança da sua área?' WHERE enunciado = 'Como avalia a sua relacao com a lideranca da sua area?';
+UPDATE perguntas SET enunciado = 'Como avalia a clareza e eficiência da comunicação dentro da empresa?' WHERE enunciado = 'Como avalia a clareza e eficiencia da comunicacao dentro da empresa?';
+UPDATE perguntas SET enunciado = 'Sente que tem liberdade de expressão no seu ambiente de trabalho?' WHERE enunciado = 'Sente que tem liberdade de expressao no seu ambiente de trabalho?';
+UPDATE perguntas SET enunciado = 'Qual o seu nível de satisfação com os encontros presenciais?' WHERE enunciado = 'Qual o seu nivel de satisfacao com os encontros presenciais?';
+UPDATE perguntas SET enunciado = 'Como avalia os benefícios oferecidos pela Include Jr.?' WHERE enunciado = 'Como avalia os beneficios oferecidos pela Include Jr.?';
+UPDATE perguntas SET enunciado = 'Quais são os principais desafios enfrentados no seu dia a dia?' WHERE enunciado = 'Quais sao os principais desafios enfrentados no seu dia a dia?';
+UPDATE perguntas SET eixo = 'Satisfação com rotina e tarefas' WHERE eixo = 'Satisfacao com rotina e tarefas';
+UPDATE perguntas SET eixo = 'Relação com a liderança' WHERE eixo = 'Relacao com a lideranca';
+UPDATE perguntas SET eixo = 'Clareza e eficiência da comunicação' WHERE eixo = 'Clareza e eficiencia da comunicacao';
+UPDATE perguntas SET eixo = 'Liberdade de expressão' WHERE eixo = 'Liberdade de expressao';
+UPDATE perguntas SET eixo = 'Benefícios oferecidos' WHERE eixo = 'Beneficios oferecidos';
+COMMIT;
