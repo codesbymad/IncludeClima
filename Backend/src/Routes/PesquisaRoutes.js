@@ -44,28 +44,44 @@ router.get('/historico', auth, PesquisaController.listarHistorico);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - titulo
+ *               - descricao
+ *               - data_inicio
+ *               - data_fim
+ *               - id_pesq_modelo
  *             properties:
- *               titulo: 
+ *               titulo:
  *                 type: string
  *                 example: "Pesquisa de Clima"
- *               descricao: 
+ *               descricao:
  *                 type: string
- *                 example: "Edição Q1 2027"
- *               data_inicio: 
- *                 type: string
- *                 format: date
- *                 example: "2027-01-01"
- *               data_fim: 
+ *                 example: "Edição de novembro de 2026"
+ *               data_inicio:
  *                 type: string
  *                 format: date
- *                 example: "2027-03-31"
+ *                 example: "2026-11-10"
+ *               data_fim:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-12-10"
+ *               id_pesq_modelo:
+ *                 type: integer
+ *                 example: 3
+ *                 description: ID da pesquisa anterior utilizada como modelo
  *     responses:
  *       201:
  *         description: Pesquisa criada com sucesso.
+ *       400:
+ *         description: Dados inválidos ou pesquisa modelo sem perguntas.
  *       401:
  *         description: Token não informado, inválido ou expirado.
  *       403:
  *         description: Acesso restrito a líderes.
+ *       404:
+ *         description: Pesquisa modelo não encontrada.
+ *       500:
+ *         description: Erro interno ao criar pesquisa.
  */
 router.post('/nova', auth, apenasLider, PesquisaController.criarPesquisa);
 
@@ -90,29 +106,35 @@ router.post('/nova', auth, apenasLider, PesquisaController.criarPesquisa);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - descricao
+ *               - data_inicio
+ *               - data_fim
  *             properties:
- *               descricao: 
+ *               descricao:
  *                 type: string
- *                 example: "Edição Q1 2027"
- *               data_inicio: 
- *                 type: string
- *                 format: date
- *                 example: "2027-01-01"
- *               data_fim: 
+ *                 example: "Edição de dezembro de 2026"
+ *               data_inicio:
  *                 type: string
  *                 format: date
- *                 example: "2027-03-31"
+ *                 example: "2026-12-11"
+ *               data_fim:
+ *                 type: string
+ *                 format: date
+ *                 example: "2027-01-10"
  *     responses:
  *       201:
  *         description: Pesquisa reaplicada com sucesso.
  *       400:
- *         description: Já existe uma edição neste trimestre ou erro de validação.
+ *         description: Dados inválidos, pesquisa sem perguntas ou duplicidade de título e datas.
  *       401:
  *         description: Token não informado, inválido ou expirado.
  *       403:
  *         description: Acesso restrito a líderes.
  *       404:
  *         description: Pesquisa original não encontrada.
+ *       500:
+ *         description: Erro interno ao reaplicar pesquisa.
  */
 router.post('/:id/reaplicar', auth, apenasLider, PesquisaController.reaplicarPesquisa);
 
@@ -136,11 +158,14 @@ router.post('/:id/reaplicar', auth, apenasLider, PesquisaController.reaplicarPes
  *         description: Lista de perguntas retornada com sucesso.
  *       401:
  *         description: Token não informado, inválido ou expirado.
+ *       404:
+ *         description: Pesquisa não encontrada ou sem perguntas.
+ *       500:
+ *         description: Erro ao buscar perguntas.
  */
 router.get('/:id_pesq/perguntas', auth, PesquisaController.listarPerguntas);
 
-
-// Rotas de Relatorios
+// Rotas de relatórios
 
 /**
  * @openapi
