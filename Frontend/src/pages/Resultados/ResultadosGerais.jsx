@@ -4,75 +4,53 @@ import { Check, ArrowRight, ChevronDown, TrendingUp } from 'lucide-react'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
 import ConfirmModal from '../../components/ConfirmModal'
-import api from '../../services/api'
+import {
+  listarTitulosComparacao,
+  compararEdicoes,
+  listarDiretorias,
+} from '../../services/pesquisaService'
+import { mensagemDeErro } from '../../utils/erros'
+import { formatarIntervalo, formatarNumero } from '../../utils/formatadores'
 import '../Home/Home.css'
 import './Resultados.css'
 import './ResultadosGerais.css'
 
-const OPCOES_DIRETORIA = [
-  'Geral',
-  'Presidência',
-  'Projetos',
-  'Comercial',
-  'Marketing',
-  'Gestão de Pessoas',
-  'Financeiro',
-]
+const DIVISOES = ['Semana', 'Mês', 'Trimestre', 'Semestre', 'Ano']
 
-const GRUPOS_PESQUISAS = [
-  {
-    id: 'q4-2026',
-    trimestre: 'Quarto trimestre de 2026 - OUT/DEZ',
-    pesquisas: [
-      {
-        id: 3,
-        titulo: 'Como está o clima na sua rotina?',
-        descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-        periodo: '12/10/2026 - 05/11/2026',
-      },
-      {
-        id: 2,
-        titulo: 'Ventos de liderança: como está essa relação?',
-        descricao: 'Pesquisa sobre relação com a liderança',
-        periodo: '12/10/2026 - 05/11/2026',
-      },
-      {
-        id: 1,
-        titulo: 'Clareza e eficiência na comunicação interna',
-        descricao: 'Pesquisa sobre comunicação entre diretorias',
-        periodo: '12/10/2026 - 05/11/2026',
-      },
-    ],
-  },
-  {
-    id: 'q3-2026',
-    trimestre: 'Terceiro trimestre de 2026 - JUL/SET',
-    pesquisas: [
-      {
-        id: 4,
-        titulo: 'Como está o clima na sua rotina?',
-        descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-        periodo: '12/07/2026 - 05/08/2026',
-      },
-      {
-        id: 5,
-        titulo: 'Ventos de liderança: como está essa relação?',
-        descricao: 'Pesquisa sobre relação com a liderança',
-        periodo: '12/07/2026 - 05/08/2026',
-      },
-      {
-        id: 6,
-        titulo: 'Clareza e eficiência na comunicação interna',
-        descricao: 'Pesquisa sobre comunicação entre diretorias',
-        periodo: '12/07/2026 - 05/08/2026',
-      },
-    ],
-  },
-]
+function rotuloGrupo(dataInicio, divisao) {
+  const [ano, mes, dia] = String(dataInicio).slice(0, 10).split('-').map(Number)
+  if (divisao === 'Ano') return `${ano}`
+  if (divisao === 'Semestre') return `${mes <= 6 ? '1º' : '2º'} semestre de ${ano}`
+  if (divisao === 'Mês') return `${String(mes).padStart(2, '0')}/${ano}`
+  if (divisao === 'Semana') {
+    const inicio = new Date(ano, mes - 1, dia)
+    const diaDaSemana = (inicio.getDay() + 6) % 7
 
-function formatarNumero(valor) {
-  if (valor === null || valor === undefined) return '0,0'
-  return Number(valor).toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
+    inicio.setDate(inicio.getDate() - diaDaSemana)
+
+    const fim = new Date(inicio)
+    fim.setDate(inicio.getDate() + 6)
+
+    const formatarData = (data) =>
+      `${String(data.getDate()).padStart(2, '0')}/${String(
+        data.getMonth() + 1
+      ).padStart(2, '0')}/${data.getFullYear()}`
+
+    return `Semana de ${formatarData(inicio)} a ${formatarData(fim)}`
+  }
+  return `${Math.ceil(mes / 3)}º trimestre de ${ano}`
+}
+
+function agrupar(edicoes, divisao) {
+  const grupos = new Map()
+  edicoes.forEach((e) => {
+    const rotulo = rotuloGrupo(e.inicio, divisao)
+    if (!grupos.has(rotulo)) grupos.set(rotulo, { rotulo, ordem: e.inicio, itens: [] })
+    const grupo = grupos.get(rotulo)
+    grupo.itens.push(e)
+    if (e.inicio > grupo.ordem) grupo.ordem = e.inicio
+  })
+  return [...grupos.values()].sort((a, b) => b.ordem.localeCompare(a.ordem))
 }
 
 export default function ResultadosGerais() {
@@ -83,113 +61,139 @@ export default function ResultadosGerais() {
   const [divisao, setDivisao] = useState('Trimestre')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [modalCompararOpen, setModalCompararOpen] = useState(false)
+  const [edicoesEscolhidas, setEdicoesEscolhidas] = useState([])
+  const [aviso, setAviso] = useState('')
 
-  const [cardMarcadoId, setCardMarcadoId] = useState(null)
-  const [tituloEscolhido, setTituloEscolhido] = useState('')
-
-  // Estados da integração com /comparacao
-  const [titulosApi, setTitulosApi] = useState([])
+  const [titulos, setTitulos] = useState(null)
+  const [erroTitulos, setErroTitulos] = useState('')
+  const [diretorias, setDiretorias] = useState([])
+  const [erroDiretorias, setErroDiretorias] = useState(false)
   const [areaComparacao, setAreaComparacao] = useState('Geral')
   const [menuAreaOpen, setMenuAreaOpen] = useState(false)
-  const [resultadoComparacao, setResultadoComparacao] = useState(null)
+  const [comparacao, setComparacao] = useState({ chave: null, dados: null, erro: '' })
 
-  // Busca os títulos e edições disponíveis no back-end
   useEffect(() => {
-    api
-      .get('/comparacao/titulos')
-      .then((res) => {
-        if (Array.isArray(res.data)) {
-          setTitulosApi(res.data)
-        }
-      })
-      .catch(() => {
-        setTitulosApi([])
-      })
+    listarTitulosComparacao()
+      .then(setTitulos)
+      .catch((e) =>
+        setErroTitulos(mensagemDeErro(e, 'Não foi possível carregar as pesquisas.'))
+      )
   }, [])
 
-  // Consulta os dados comparativos quando entra na etapa 'comparando'
   useEffect(() => {
-    if (etapa !== 'comparando') return
+    listarDiretorias()
+      .then(setDiretorias)
+      .catch(() => setErroDiretorias(true))
+  }, [])
 
-    // Descobre os IDs das duas edições a comparar (da API ou fallback para 2 e 3)
-    const grupoApi =
-      titulosApi.find((t) => t.titulo === tituloEscolhido) ||
-      titulosApi.find((t) => t.pode_comparar)
+  const edicoes = (titulos || []).flatMap((t) =>
+    t.edicoes.map((e) => ({
+      id: e.id_pesq,
+      titulo: t.titulo,
+      podeComparar: t.pode_comparar,
+      inicio: e.data_inicio,
+      fim: e.data_fim,
+      participantes: e.participantes,
+    }))
+  )
+  const grupos = agrupar(edicoes, divisao)
 
-    let idAnterior = 2
-    let idAtual = 3
+  const edicoesSelecionadas = edicoes
+  .filter((e) => edicoesEscolhidas.includes(e.id))
+  .sort((a, b) => a.inicio.localeCompare(b.inicio))
 
-    if (grupoApi && grupoApi.edicoes?.length >= 2) {
-      const edicoesOrdenadas = [...grupoApi.edicoes].sort((a, b) =>
-        a.data_inicio.localeCompare(b.data_inicio)
-      )
-      idAnterior = edicoesOrdenadas[edicoesOrdenadas.length - 2].id_pesq
-      idAtual = edicoesOrdenadas[edicoesOrdenadas.length - 1].id_pesq
-    }
+  const idAnterior = edicoesSelecionadas[0]?.id || null
+  const idAtual = edicoesSelecionadas[1]?.id || null
 
-    const params = { anterior: idAnterior, atual: idAtual }
-    if (areaComparacao !== 'Geral') {
-      params.area = areaComparacao
-    }
+  const tituloEscolhido = edicoesSelecionadas[0]?.titulo || ''
 
-    api
-      .get('/comparacao', { params })
-      .then((res) => {
-        if (res.data) {
-          setResultadoComparacao(res.data)
-        }
+  const chave = `${idAnterior}|${idAtual}|${areaComparacao}`
+
+  useEffect(() => {
+    if (etapa !== 'comparando' || !idAnterior || !idAtual) return
+    let cancelado = false
+    compararEdicoes(
+      idAnterior,
+      idAtual,
+      areaComparacao === 'Geral' ? null : areaComparacao
+    )
+      .then((dados) => {
+        if (!cancelado) setComparacao({ chave, dados, erro: '' })
       })
-      .catch(() => {
-        setResultadoComparacao(null)
+      .catch((e) => {
+        if (!cancelado)
+          setComparacao({
+            chave,
+            dados: null,
+            erro: mensagemDeErro(e, 'Não foi possível carregar a comparação.'),
+          })
       })
-  }, [etapa, tituloEscolhido, areaComparacao, titulosApi])
+    return () => {
+      cancelado = true
+    }
+  }, [etapa, idAnterior, idAtual, areaComparacao, chave])
 
-  const selecionarTituloPesquisa = (pesquisa) => {
-    setCardMarcadoId(pesquisa.id)
-    setTituloEscolhido(pesquisa.titulo)
-  }
+  const resultado = comparacao.chave === chave ? comparacao : null
+  const dados = resultado?.dados || null
 
   const handleBotaoTopo = () => {
     if (etapa === 'listagem') {
       setModalCompararOpen(true)
     } else if (etapa === 'selecionando') {
-      if (!tituloEscolhido) {
-        setTituloEscolhido('Como está o clima na sua rotina?')
+      if (edicoesEscolhidas.length !== 2) {
+        setAviso('Selecione duas edições para continuar.')
+        return
       }
+
+      setAviso('')
       setEtapa('selecionados')
     } else if (etapa === 'selecionados') {
       setEtapa('comparando')
     }
   }
 
-  // Valores exibidos no card comparativo (usa retorno da API quando disponível)
-  const dadosInsuficientes = resultadoComparacao?.dados_insuficientes === true
-  const respPrimeira = resultadoComparacao?.anterior?.participantes ?? 10
-  const respSegunda = resultadoComparacao?.atual?.participantes ?? 11
-  const mediaPrimeira = resultadoComparacao?.anterior?.media_geral ?? 2.73
-  const faixaPrimeira = resultadoComparacao?.anterior?.faixa_geral ?? 'Atenção'
-  const mediaSegunda = resultadoComparacao?.atual?.media_geral ?? 4.03
-  const faixaSegunda = resultadoComparacao?.atual?.faixa_geral ?? 'Excelente'
-  const crescimento = resultadoComparacao?.diferenca_geral ?? 1.3
-  const tendenciaTexto =
-    resultadoComparacao?.tendencia === 'Piora'
-      ? 'Queda nos indicadores identificada'
-      : resultadoComparacao?.tendencia === 'Estável'
-      ? 'Estabilidade nos indicadores identificada'
-      : 'Evolução positiva identificada'
+  const voltar = () => {
+    setEtapa('listagem')
+    setEdicoesEscolhidas([])
+    setAreaComparacao('Geral')
+    setAviso('')
+  }
 
-  const listaVariacoes =
-    resultadoComparacao?.variacoes?.length > 0
-      ? resultadoComparacao.variacoes.map((v) => ({
-          id: v.id_perg,
-          nome: v.eixo || v.pergunta,
-          diferenca: v.diferenca,
-        }))
-      : [
-          { id: 1, nome: 'Alinhamento das atividades', diferenca: 1.2 },
-          { id: 2, nome: 'Distribuição de tarefas', diferenca: 1.4 },
-          { id: 3, nome: 'Tempo para realização', diferenca: 1.4 },
-        ]
+  const handleSelecionarEdicao = (item) => {
+    if (edicoesEscolhidas.includes(item.id)) {
+      setEdicoesEscolhidas((atuais) =>
+        atuais.filter((id) => id !== item.id)
+      )
+      setAviso('')
+      return
+    }
+
+    if (edicoesEscolhidas.length >= 2) return
+
+    const primeiraEscolhida = edicoes.find(
+      (e) => e.id === edicoesEscolhidas[0]
+    )
+
+    if (
+      primeiraEscolhida &&
+      primeiraEscolhida.titulo !== item.titulo
+    ) {
+      setAviso('As duas edições precisam ter o mesmo título.')
+      return
+    }
+
+    setEdicoesEscolhidas((atuais) => [...atuais, item.id])
+    setAviso('')
+  }
+
+  const TENDENCIAS = {
+    Melhora: 'Evolução positiva identificada',
+    Piora: 'Queda nos indicadores identificada',
+    Estável: 'Estabilidade nos indicadores identificada',
+  }
+  const tendenciaTexto = TENDENCIAS[dados?.tendencia] || null
+
+  const largura = (media) => `${Math.min(100, (Number(media) / 5) * 100)}%`
 
   return (
     <div className="general-results-page">
@@ -197,38 +201,43 @@ export default function ResultadosGerais() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main className="general-results-container">
-        {etapa === 'comparando' ? (
+        {erroTitulos && <p>{erroTitulos}</p>}
+        {!erroTitulos && !titulos && <p>Carregando pesquisas...</p>}
+
+        {titulos && etapa === 'comparando' && (
           <section className="comparison-figma-card">
             <div className="comparison-figma-top">
               <div>
-                <h1 className="comparison-figma-title">
-                  Comparativo de pesquisas
-                </h1>
+                <h1 className="comparison-figma-title">Comparativo de pesquisas</h1>
                 <p className="comparison-figma-subtitle">
-                  Pesquisa:{' '}
-                  {resultadoComparacao?.titulo ||
-                    tituloEscolhido ||
-                    'Como está o clima na sua rotina?'}
+                  Pesquisa: {tituloEscolhido}
                 </p>
 
-                <div className="comparison-period-section">
-                  <span className="comparison-small-label">
-                    Período das pesquisas
-                  </span>
-                  <div className="comparison-period-badges">
-                    <span className="comparison-period-pill">
-                      3º Trimestre de 2026
+                {dados?.anterior && dados?.atual && (
+                  <div className="comparison-period-section">
+                    <span className="comparison-small-label">
+                      Período das pesquisas
                     </span>
-                    <span className="comparison-period-arrow">──────►</span>
-                    <span className="comparison-period-pill">
-                      4º Trimestre de 2026
-                    </span>
+                    <div className="comparison-period-badges">
+                      <span className="comparison-period-pill">
+                        {formatarIntervalo(
+                          dados.anterior.data_inicio,
+                          dados.anterior.data_fim
+                        )}
+                      </span>
+                      <span className="comparison-period-arrow">──────►</span>
+                      <span className="comparison-period-pill">
+                        {formatarIntervalo(
+                          dados.atual.data_inicio,
+                          dados.atual.data_fim
+                        )}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="comparison-top-right">
-                {/* Seletor de filtro por diretoria */}
                 <div className="results-filter-row" style={{ marginBottom: 8 }}>
                   <span
                     className="comparison-small-label"
@@ -246,9 +255,13 @@ export default function ResultadosGerais() {
                       <ChevronDown size={20} color="#FFFFFF" />
                     </button>
 
+                    {erroDiretorias && (
+                      <span>Não foi possível carregar as diretorias.</span>
+                    )}
+
                     {menuAreaOpen && (
                       <div className="results-filter-menu">
-                        {OPCOES_DIRETORIA.map((area) => (
+                        {['Geral', ...diretorias].map((area) => (
                           <button
                             key={area}
                             type="button"
@@ -266,14 +279,14 @@ export default function ResultadosGerais() {
                   </div>
                 </div>
 
-                {!dadosInsuficientes && (
+                {dados?.anterior && dados?.atual && !dados.dados_insuficientes && (
                   <div className="comparison-responses-counts">
                     <div className="comparison-count-block">
                       <span className="comparison-small-label">
                         Primeira pesquisa
                       </span>
                       <strong className="comparison-count-number">
-                        {respPrimeira} Respostas
+                        {dados.anterior.participantes} participantes
                       </strong>
                     </div>
                     <div className="comparison-count-block">
@@ -281,7 +294,7 @@ export default function ResultadosGerais() {
                         Segunda pesquisa
                       </span>
                       <strong className="comparison-count-number">
-                        {respSegunda} Respostas
+                        {dados.atual.participantes} participantes
                       </strong>
                     </div>
                   </div>
@@ -289,18 +302,30 @@ export default function ResultadosGerais() {
               </div>
             </div>
 
-            {/* Bloco de proteção de anonimato quando houver menos de 3 respostas */}
-            {dadosInsuficientes ? (
+            {!idAnterior && (
+              <div className="insufficient-data-box">
+                <h2 className="insufficient-data-box__title">
+                  Não há duas edições para comparar
+                </h2>
+                <p className="insufficient-data-box__text">
+                  Este título ainda não tem duas edições com respostas.
+                </p>
+              </div>
+            )}
+
+            {idAnterior && !resultado && <p>Carregando comparação...</p>}
+            {resultado?.erro && <p>{resultado.erro}</p>}
+
+            {dados?.dados_insuficientes && (
               <div className="insufficient-data-box">
                 <h2 className="insufficient-data-box__title">
                   Quantidade de respostas insuficiente
                 </h2>
-                <p className="insufficient-data-box__text">
-                  {resultadoComparacao?.mensagem ||
-                    'Não é possível exibir os resultados porque a quantidade de respostas ainda é insuficiente (mínimo de 3 participantes) para preservar o anonimato dos participantes.'}
-                </p>
+                <p className="insufficient-data-box__text">{dados.mensagem}</p>
               </div>
-            ) : (
+            )}
+
+            {dados?.anterior && dados?.atual && !dados.dados_insuficientes && (
               <>
                 <div className="comparison-averages-row">
                   <div className="comparison-avg-col">
@@ -308,35 +333,33 @@ export default function ResultadosGerais() {
                       Média da primeira pesquisa
                     </span>
                     <strong className="comparison-avg-value">
-                      {formatarNumero(mediaPrimeira)}
+                      {formatarNumero(dados.anterior.media_geral)}
                     </strong>
                     <span className="comparison-avg-faixa">
-                      ({faixaPrimeira})
+                      ({dados.anterior.faixa_geral})
                     </span>
                   </div>
-
                   <div className="comparison-avg-col">
                     <span className="comparison-small-label">
                       Média da segunda pesquisa
                     </span>
                     <strong className="comparison-avg-value">
-                      {formatarNumero(mediaSegunda)}
+                      {formatarNumero(dados.atual.media_geral)}
                     </strong>
                     <span className="comparison-avg-faixa">
-                      ({faixaSegunda})
+                      ({dados.atual.faixa_geral})
                     </span>
                   </div>
-
                   <div className="comparison-avg-col">
-                    <span className="comparison-small-label">Crescimento</span>
+                    <span className="comparison-small-label">Diferença</span>
                     <strong
                       className="comparison-growth-value"
                       style={{
-                        color: crescimento < 0 ? '#E02C00' : '#2CA500',
+                        color: dados.diferenca_geral < 0 ? '#E02C00' : '#2CA500',
                       }}
                     >
-                      {crescimento > 0 ? '+' : ''}
-                      {formatarNumero(crescimento)}
+                      {dados.diferenca_geral > 0 ? '+' : ''}
+                      {formatarNumero(dados.diferenca_geral)}
                     </strong>
                   </div>
                 </div>
@@ -345,64 +368,46 @@ export default function ResultadosGerais() {
                   <h2 className="comparison-section-heading">
                     Evolução de satisfação
                   </h2>
-
-                  <div className="comparison-bar-block">
-                    <span className="comparison-small-label">
-                      Primeira pesquisa
-                    </span>
-                    <div className="comparison-bar-line">
-                      <div className="comparison-bar-track">
-                        <div
-                          className="comparison-bar-fill comparison-bar-fill--first"
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              (Number(mediaPrimeira) / 5) * 100
-                            )}%`,
-                          }}
-                        />
+                  {[
+                    ['Primeira pesquisa', dados.anterior.media_geral, 'first'],
+                    ['Segunda pesquisa', dados.atual.media_geral, 'second'],
+                  ].map(([nome, media, tipo]) => (
+                    <div key={tipo} className="comparison-bar-block">
+                      <span className="comparison-small-label">{nome}</span>
+                      <div className="comparison-bar-line">
+                        <div className="comparison-bar-track">
+                          <div
+                            className={`comparison-bar-fill comparison-bar-fill--${tipo}`}
+                            style={{ width: largura(media) }}
+                          />
+                        </div>
+                        <span className="comparison-bar-score">
+                          {formatarNumero(media)}/5
+                        </span>
                       </div>
-                      <span className="comparison-bar-score">
-                        {formatarNumero(mediaPrimeira)}/5
-                      </span>
                     </div>
-                  </div>
-
-                  <div className="comparison-bar-block">
-                    <span className="comparison-small-label">
-                      Segunda pesquisa
-                    </span>
-                    <div className="comparison-bar-line">
-                      <div className="comparison-bar-track">
-                        <div
-                          className="comparison-bar-fill comparison-bar-fill--second"
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              (Number(mediaSegunda) / 5) * 100
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="comparison-bar-score">
-                        {formatarNumero(mediaSegunda)}/5
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
                 <div className="comparison-changes-section">
                   <h2 className="comparison-section-heading">
-                    Principais mudanças identificadas
+                    Principais mudanças identificadas ({dados.perguntas_em_comum}{' '}
+                    perguntas em comum)
                   </h2>
-
                   <div className="comparison-changes-list">
-                    {listaVariacoes.map((item) => (
-                      <div key={item.id} className="comparison-change-item">
-                        <span>{item.nome}</span>
-                        <span className="comparison-change-badge">
-                          {item.diferenca > 0 ? '+ ' : ''}
-                          {formatarNumero(item.diferenca)}
+                    {dados.variacoes.slice(0, 3).map((v) => (
+                      <div key={v.id_perg} className="comparison-change-item">
+                        <span>{v.eixo || v.pergunta}</span>
+                        <span
+                          className="comparison-change-badge"
+                          style={
+                            v.diferenca < 0
+                              ? { backgroundColor: '#FFD6D0', color: '#B00020' }
+                              : undefined
+                          }
+                        >
+                          {v.diferenca > 0 ? '+ ' : ''}
+                          {formatarNumero(v.diferenca)}
                         </span>
                       </div>
                     ))}
@@ -412,30 +417,20 @@ export default function ResultadosGerais() {
             )}
 
             <div className="comparison-footer-row">
-              {!dadosInsuficientes ? (
+              {dados && !dados.dados_insuficientes && tendenciaTexto && (
                 <div className="comparison-positive-status">
                   <TrendingUp size={24} />
                   <span>{tendenciaTexto}</span>
                 </div>
-              ) : (
-                <div />
               )}
-
-              <button
-                type="button"
-                className="comparison-back-btn"
-                onClick={() => {
-                  setEtapa('listagem')
-                  setCardMarcadoId(null)
-                  setTituloEscolhido('')
-                  setAreaComparacao('Geral')
-                }}
-              >
+              <button type="button" className="comparison-back-btn" onClick={voltar}>
                 Voltar
               </button>
             </div>
           </section>
-        ) : (
+        )}
+
+        {titulos && etapa !== 'comparando' && (
           <>
             <div className="general-top-bar">
               {etapa === 'listagem' && (
@@ -450,24 +445,21 @@ export default function ResultadosGerais() {
                       <span>{divisao}</span>
                       <ChevronDown size={20} color="#FFFFFF" />
                     </button>
-
                     {dropdownOpen && (
                       <div className="general-select-dropdown">
-                        {['Ano', 'Semestre', 'Trimestre', 'Mês', 'Semana'].map(
-                          (opcao) => (
-                            <button
-                              key={opcao}
-                              type="button"
-                              className="general-select-option"
-                              onClick={() => {
-                                setDivisao(opcao)
-                                setDropdownOpen(false)
-                              }}
-                            >
-                              {opcao}
-                            </button>
-                          )
-                        )}
+                        {DIVISOES.map((opcao) => (
+                          <button
+                            key={opcao}
+                            type="button"
+                            className="general-select-option"
+                            onClick={() => {
+                              setDivisao(opcao)
+                              setDropdownOpen(false)
+                            }}
+                          >
+                            {opcao}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -476,12 +468,11 @@ export default function ResultadosGerais() {
 
               {etapa === 'selecionando' && (
                 <span className="general-top-label">
-                  Selecione o título desejado:
+                  Selecione duas edições do mesmo título:
                 </span>
               )}
-
               {etapa === 'selecionados' && (
-                <span className="general-top-label">Títulos selecionados:</span>
+                <span className="general-top-label">Edições selecionadas:</span>
               )}
 
               <button
@@ -501,25 +492,22 @@ export default function ResultadosGerais() {
               </button>
             </div>
 
-            {GRUPOS_PESQUISAS.map((grupo) => {
-              const pesquisasVisiveis =
-                etapa === 'selecionados'
-                  ? grupo.pesquisas.filter((p) => p.titulo === tituloEscolhido)
-                  : grupo.pesquisas
+            {aviso && <p>{aviso}</p>}
+            {grupos.length === 0 && <p>Nenhuma pesquisa cadastrada.</p>}
 
-              if (pesquisasVisiveis.length === 0) return null
+            {grupos.map((grupo) => {
+              const itens =
+              etapa === 'selecionados'
+                ? grupo.itens.filter((e) => edicoesEscolhidas.includes(e.id))
+                : grupo.itens
+              if (itens.length === 0) return null
 
               return (
-                <section key={grupo.id} className="quarter-section">
-                  <h2 className="quarter-title">{grupo.trimestre}</h2>
-
+                <section key={grupo.rotulo} className="quarter-section">
+                  <h2 className="quarter-title">{grupo.rotulo}</h2>
                   <div className="quarter-cards-list">
-                    {pesquisasVisiveis.map((item) => {
-                      const estaSelecionado =
-                        etapa === 'selecionados'
-                          ? true
-                          : cardMarcadoId === item.id
-
+                    {itens.map((item) => {
+                      const selecionado = edicoesEscolhidas.includes(item.id)
                       return (
                         <div
                           key={item.id}
@@ -533,37 +521,47 @@ export default function ResultadosGerais() {
                             ) : (
                               <button
                                 type="button"
+                                disabled={
+                                  !item.podeComparar ||
+                                  item.participantes === 0 ||
+                                  (edicoesEscolhidas.length === 2 && !selecionado)
+                                }
                                 className={`compare-radio-circle ${
-                                  estaSelecionado
-                                    ? 'compare-radio-circle--selected'
-                                    : ''
+                                  selecionado ? 'compare-radio-circle--selected' : ''
                                 }`}
-                                onClick={() => selecionarTituloPesquisa(item)}
-                                title="Selecionar este título de pesquisa"
+                                onClick={() => handleSelecionarEdicao(item)}
+                                title={
+                                  item.participantes === 0
+                                    ? 'Esta edição não possui participantes'
+                                    : item.podeComparar
+                                      ? 'Selecionar esta edição'
+                                      : 'Só há uma edição deste título'
+                                }
                               >
-                                {estaSelecionado && (
+                                {selecionado && (
                                   <span className="compare-radio-inner" />
                                 )}
                               </button>
                             )}
 
                             <div className="survey-card__info">
-                              <h3 className="survey-card__title">
-                                {item.titulo}
-                              </h3>
+                              <h3 className="survey-card__title">{item.titulo}</h3>
                               <p className="survey-card__desc">
-                                {item.descricao}
+                                {item.participantes} participantes
+                                {etapa === 'selecionando' && !item.podeComparar
+                                  ? ' · Só 1 edição, não dá para comparar'
+                                  : ''}
                               </p>
-                              <p className="survey-card__date">{item.periodo}</p>
+                              <p className="survey-card__date">
+                                {formatarIntervalo(item.inicio, item.fim)}
+                              </p>
                             </div>
                           </div>
 
                           <button
                             type="button"
                             className="survey-card__arrow-btn"
-                            onClick={() =>
-                              navigate(`/resultados?id_pesq=${item.id}`)
-                            }
+                            onClick={() => navigate(`/resultados?id_pesq=${item.id}`)}
                             title="Ver resultados detalhados"
                           >
                             <ArrowRight size={32} color="#000000" />
@@ -585,8 +583,8 @@ export default function ResultadosGerais() {
         confirmText="Iniciar!"
         onConfirm={() => {
           setModalCompararOpen(false)
-          setCardMarcadoId(null)
-          setTituloEscolhido('')
+          setEdicoesEscolhidas([])
+          setAviso('')
           setEtapa('selecionando')
         }}
         onCancel={() => setModalCompararOpen(false)}

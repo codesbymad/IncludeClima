@@ -16,7 +16,7 @@ async function runSeed() {
 
     // 1. INSERIR USUÁRIOS
     console.log('1. A verificar/inserir usuarios');
-    
+
     const senhaHash = await bcrypt.hash('IncludeClima@2026', 10);
     const senhaLiderHash = await bcrypt.hash('LiderIncludeClima@2026', 10);
 
@@ -24,7 +24,7 @@ async function runSeed() {
     const checkLider = await cliente.query('SELECT id_user FROM usuarios WHERE email = $1', [emailLider]);
     if (checkLider.rows.length === 0) {
       await cliente.query(
-        "INSERT INTO usuarios (nome, email, senha, is_lider) VALUES ('Lider Include', $1, $2, true)", 
+        "INSERT INTO usuarios (nome, email, senha, is_lider) VALUES ('Lider Include', $1, $2, true)",
         [emailLider, senhaLiderHash]
       );
     }
@@ -54,7 +54,7 @@ async function runSeed() {
     }
     console.log('Usuarios configurados com hashes bcrypt.');
 
-    // 2. INSERIR PERGUNTAS 
+    // 2. INSERIR PERGUNTAS
     console.log('2. A verificar Perguntas do Questionario');
     const perguntasSeed = [
     { enunciado: 'Qual a sua diretoria atual?', tipo: 'DIRETORIA', eixo: 'Mapeamento' },
@@ -78,7 +78,7 @@ async function runSeed() {
 
     // 3. INSERIR AS 3 EDIÇÕES DA PESQUISA
     console.log('3. A verificar Edicoes das Pesquisas (Q2, Q3, Q4 2026)...');
-    
+
     const tituloPadrao = 'Pesquisa de Clima';
     const edicoes = [
       { titulo: tituloPadrao, desc: 'Edicao Q2 2026 (Dados de Teste)', inicio: '2026-04-01', fim: '2026-06-30' },
@@ -89,15 +89,15 @@ async function runSeed() {
     const idsPesquisas = [];
     for (const edicao of edicoes) {
       const checkPesq = await cliente.query(`
-        SELECT id_pesq FROM pesquisas 
-        WHERE titulo = $1 
+        SELECT id_pesq FROM pesquisas
+        WHERE titulo = $1
         AND EXTRACT(YEAR FROM data_inicio) = EXTRACT(YEAR FROM $2::DATE)
         AND EXTRACT(QUARTER FROM data_inicio) = EXTRACT(QUARTER FROM $2::DATE)
       `, [edicao.titulo, edicao.inicio]);
 
       if (checkPesq.rows.length === 0) {
         const result = await cliente.query(`
-          INSERT INTO pesquisas (titulo, descricao, data_inicio, data_fim) 
+          INSERT INTO pesquisas (titulo, descricao, data_inicio, data_fim)
           VALUES ($1, $2, $3, $4) RETURNING id_pesq
         `, [edicao.titulo, edicao.desc, edicao.inicio, edicao.fim]);
         idsPesquisas.push(result.rows[0].id_pesq);
@@ -107,38 +107,62 @@ async function runSeed() {
     }
     console.log('Edicoes da pesquisa configuradas com titulos padronizados.');
 
-    // 4. VINCULAR PERGUNTAS ÀS PESQUISAS
+
+    // 4. VINCULAR PERGUNTAS FIXAS ÀS PESQUISAS DE TESTE
     console.log('4. A vincular perguntas as pesquisas');
-    const perguntasResult = await cliente.query(
-      'SELECT id_perg FROM perguntas ORDER BY id_perg'
-    );
-    const todasPerguntas = perguntasResult.rows;
 
     for (const idPesq of idsPesquisas) {
       let posicao = 1;
-      for (const pergunta of todasPerguntas) {
-        const checkRel = await cliente.query('SELECT id FROM pesquisa_perguntas WHERE id_pesq = $1 AND id_perg = $2', [idPesq, pergunta.id_perg]);
-        if (checkRel.rows.length === 0) {
-          await cliente.query('INSERT INTO pesquisa_perguntas (id_pesq, id_perg, posicao) VALUES ($1, $2, $3)', [idPesq, pergunta.id_perg, posicao]);
+
+      for (const pergunta of perguntasSeed) {
+        const perguntaResult = await cliente.query(
+          'SELECT id_perg FROM perguntas WHERE enunciado = $1',
+          [pergunta.enunciado]
+        );
+
+        if (perguntaResult.rows.length === 0) {
+          throw new Error(
+            `Pergunta da seed não encontrada: ${pergunta.enunciado}`
+          );
         }
+
+        const idPerg = perguntaResult.rows[0].id_perg;
+
+        const checkRel = await cliente.query(
+          `SELECT id
+           FROM pesquisa_perguntas
+           WHERE id_pesq = $1 AND id_perg = $2`,
+          [idPesq, idPerg]
+        );
+
+        if (checkRel.rows.length === 0) {
+          await cliente.query(
+            `INSERT INTO pesquisa_perguntas
+              (id_pesq, id_perg, posicao)
+             VALUES ($1, $2, $3)`,
+            [idPesq, idPerg, posicao]
+          );
+        }
+
         posicao++;
       }
     }
-    console.log('Vinculos de perguntas configurados.');
-    
-    // 5. GERAR PARTICIPAÇÕES E RESPOSTAS 
+
+    console.log('Vinculos das perguntas fixas configurados.');
+
+    // 5. GERAR PARTICIPAÇÕES E RESPOSTAS
     console.log('5. A gerar massa de respostas ficticias (Anonimizadas)');
     const diretorias = ['Presidência', 'Projetos', 'Comercial', 'Marketing', 'Gestão de Pessoas', 'Financeiro'];
 
     for (const idPesq of idsPesquisas) {
       const linksResult = await cliente.query('SELECT id, id_perg FROM pesquisa_perguntas WHERE id_pesq = $1', [idPesq]);
-      
+
       for (const idUser of idsParticipantes) {
         const checkPart = await cliente.query('SELECT * FROM participacoes WHERE id_user = $1 AND id_pesq = $2', [idUser, idPesq]);
-        
+
         if (checkPart.rows.length === 0) {
           await cliente.query('INSERT INTO participacoes (id_user, id_pesq) VALUES ($1, $2)', [idUser, idPesq]);
-          
+
           const areaDoUsuario = diretorias[Math.floor(Math.random() * diretorias.length)];
 
           for (const link of linksResult.rows) {
@@ -150,10 +174,10 @@ async function runSeed() {
 
             if (tipo === 'DIRETORIA') {
               valor_texto = areaDoUsuario;
-            } 
+            }
             else if (tipo === 'LIKERT') {
               valor_numerico = Math.floor(Math.random() * 5) + 1; // Random 1 a 5
-            } 
+            }
             else if (tipo === 'TEXTO') {
               const feedbacks = [
                 'Sobrecarga: Muito volume de tarefas nesta última sprint.',
@@ -166,12 +190,12 @@ async function runSeed() {
               ];
               valor_texto = feedbacks[Math.floor(Math.random() * feedbacks.length)];
             }
-            
+
             await cliente.query(
               'INSERT INTO respostas (pesquisa_pergunta_id, valor_texto, valor_numerico, area) VALUES ($1, $2, $3, $4)',
               [link.id, valor_texto, valor_numerico, areaDoUsuario]
             );
-          }   
+          }
         }
       }
     }

@@ -45,7 +45,7 @@ class PesquisaController {
       descricao,
       data_inicio,
       data_fim,
-      id_pesq_modelo
+      perguntas
     } = req.body || {};
 
     if (typeof titulo !== 'string' || !titulo.trim()) {
@@ -66,10 +66,49 @@ class PesquisaController {
       });
     }
 
-    if (!idValido(id_pesq_modelo)) {
+    if (!Array.isArray(perguntas) || perguntas.length === 0) {
       return res.status(400).json({
-        erro: 'Informe uma pesquisa modelo válida.'
+        erro: 'Adicione pelo menos uma pergunta à pesquisa.'
       });
+    }
+
+    const tiposPermitidos = ['LIKERT', 'TEXTO'];
+
+    let eixosPermitidos;
+
+    try {
+      const resultadoEixos = await pool.query(`
+        SELECT DISTINCT eixo
+        FROM perguntas
+        WHERE eixo IS NOT NULL
+          AND eixo <> 'Mapeamento'
+      `);
+
+      eixosPermitidos = resultadoEixos.rows.map((row) => row.eixo);
+
+      if (!eixosPermitidos.includes('Personalizado')) {
+        eixosPermitidos.push('Personalizado');
+      }
+    } catch (erro) {
+      console.error('Erro ao validar eixos:', erro);
+
+      return res.status(500).json({
+        erro: 'Não foi possível validar os eixos das perguntas.'
+      });
+    }
+
+    for (const pergunta of perguntas) {
+      if (
+        !pergunta ||
+        typeof pergunta.enunciado !== 'string' ||
+        !pergunta.enunciado.trim() ||
+        !tiposPermitidos.includes(pergunta.tipo) ||
+        !eixosPermitidos.includes(pergunta.eixo)
+      ) {
+        return res.status(400).json({
+          erro: 'Verifique os enunciados, tipos e eixos das perguntas.'
+        });
+      }
     }
 
     let cliente;
@@ -80,35 +119,6 @@ class PesquisaController {
 
       await cliente.query('BEGIN');
       transacaoAberta = true;
-
-      const modeloResult = await cliente.query(`
-        SELECT
-          p.id_pesq,
-          COUNT(pp.id) AS total_perguntas
-        FROM pesquisas p
-        LEFT JOIN pesquisa_perguntas pp
-          ON pp.id_pesq = p.id_pesq
-        WHERE p.id_pesq = $1
-        GROUP BY p.id_pesq
-      `, [Number(id_pesq_modelo)]);
-
-      if (modeloResult.rows.length === 0) {
-        await cliente.query('ROLLBACK');
-        transacaoAberta = false;
-
-        return res.status(404).json({
-          erro: 'Pesquisa modelo não encontrada.'
-        });
-      }
-
-      if (Number(modeloResult.rows[0].total_perguntas) === 0) {
-        await cliente.query('ROLLBACK');
-        transacaoAberta = false;
-
-        return res.status(400).json({
-          erro: 'A pesquisa modelo não possui perguntas.'
-        });
-      }
 
       const duplicidadeResult = await cliente.query(`
         SELECT id_pesq
@@ -146,19 +156,51 @@ class PesquisaController {
 
       const novaPesquisa = pesquisaResult.rows[0];
 
+      // Pergunta de diretoria utilizada nos filtros dos resultados.
+      const perguntaDiretoria = await cliente.query(`
+        INSERT INTO perguntas (enunciado, tipo, eixo)
+        VALUES ($1, $2, $3)
+        RETURNING id_perg
+      `, [
+        'Qual sua área de atuação/diretoria na Include?',
+        'DIRETORIA',
+        'Mapeamento'
+      ]);
+
       await cliente.query(`
         INSERT INTO pesquisa_perguntas
           (id_pesq, id_perg, posicao)
-        SELECT
-          $1,
-          id_perg,
-          posicao
-        FROM pesquisa_perguntas
-        WHERE id_pesq = $2
+        VALUES ($1, $2, $3)
       `, [
         novaPesquisa.id_pesq,
-        Number(id_pesq_modelo)
+        perguntaDiretoria.rows[0].id_perg,
+        1
       ]);
+
+      // Cadastro das perguntas personalizadas.
+      for (let i = 0; i < perguntas.length; i++) {
+        const pergunta = perguntas[i];
+
+        const perguntaResult = await cliente.query(`
+          INSERT INTO perguntas (enunciado, tipo, eixo)
+          VALUES ($1, $2, $3)
+          RETURNING id_perg
+        `, [
+              pergunta.enunciado.trim(),
+              pergunta.tipo,
+              pergunta.eixo
+            ]);
+
+        await cliente.query(`
+          INSERT INTO pesquisa_perguntas
+            (id_pesq, id_perg, posicao)
+          VALUES ($1, $2, $3)
+        `, [
+          novaPesquisa.id_pesq,
+          perguntaResult.rows[0].id_perg,
+          i + 2
+        ]);
+      }
 
       await cliente.query('COMMIT');
       transacaoAberta = false;
@@ -190,6 +232,7 @@ class PesquisaController {
     }
   }
 
+
   // 2. Lista com Situação, Busca por Nome e "Já Respondi"
   async listarHistorico(req, res) {
     const { titulo } = req.query;
@@ -200,6 +243,7 @@ class PesquisaController {
         SELECT
           p.id_pesq,
           p.titulo,
+          p.descricao,
           p.data_inicio,
           p.data_fim,
           CASE
@@ -253,10 +297,11 @@ class PesquisaController {
     try {
       const result = await pool.query(`
         SELECT
-          pp.id AS pesquisa_pergunta_id,
-          pp.posicao,
-          perg.enunciado,
-          perg.tipo
+        pp.id AS pesquisa_pergunta_id,
+        pp.posicao,
+        perg.enunciado,
+        perg.tipo,
+        perg.eixo
         FROM pesquisa_perguntas pp
         JOIN perguntas perg
           ON pp.id_perg = perg.id_perg
@@ -424,6 +469,33 @@ class PesquisaController {
       }
     }
   }
+
+  async listarEixos(req, res) {
+    try {
+      const result = await pool.query(`
+        SELECT DISTINCT eixo
+        FROM perguntas
+        WHERE eixo IS NOT NULL
+          AND eixo <> 'Mapeamento'
+        ORDER BY eixo
+      `);
+
+      const eixos = result.rows.map((row) => row.eixo);
+
+      if (!eixos.includes('Personalizado')) {
+        eixos.push('Personalizado');
+      }
+
+      return res.status(200).json(eixos);
+    } catch (erro) {
+      console.error('Erro ao listar eixos:', erro);
+
+      return res.status(500).json({
+        erro: 'Erro ao buscar eixos.'
+      });
+    }
+  }
+
 }
 
 export default new PesquisaController();

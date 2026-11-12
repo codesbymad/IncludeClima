@@ -62,3 +62,13 @@ export async function alterarLider(email, isLider) {
     const { data } = await api.patch(`/usuarios/lider`, { email, isLider })
     return data
 }
+
+export async function listarLideres() {
+    const { data } = await api.get('/usuarios/lideres')
+    return data
+}
+
+export async function listarEixos() {
+    const { data } = await api.get('/pesquisas/eixos')
+    return data
+}

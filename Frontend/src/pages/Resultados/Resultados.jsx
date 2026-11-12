@@ -3,248 +3,332 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronDown, Pin } from 'lucide-react'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
-import api from '../../services/api'
+import {
+  buscarMedias,
+  buscarFeedbacks,
+  listarPerguntas,
+  listarHistorico,
+  listarDiretorias,
+} from '../../services/pesquisaService'
+import { mensagemDeErro } from '../../utils/erros'
+import {
+  formatarNumero,
+  formatarIntervalo,
+  diasRestantes,
+} from '../../utils/formatadores'
+import { ESCALA_LIKERT, CORES_ESCALA, CORES_FAIXA } from '../../utils/escala'
 import '../Pesquisa/Pesquisa.css'
 import './Resultados.css'
 import './ResultadosGerais.css'
 
 const MINIMO_RESPOSTAS_ANONIMATO = 3
+const NOTAS = [1, 2, 3, 4, 5]
 
-const OPCOES_FILTRO = [
-  'Geral',
-  'Presidência',
-  'Projetos',
-  'Comercial',
-  'Marketing',
-  'Gestão de Pessoas',
-  'Financeiro',
-]
+const somar = (dist) => NOTAS.reduce((soma, n) => soma + (dist?.[n] || 0), 0)
+const texto = (valor) => String(valor).replace('.', ',')
 
-const DIRETORIAS_PARTICIPACAO = [
-  { nome: 'Presidência', percentual: 10 },
-  { nome: 'Projetos', percentual: 20 },
-  { nome: 'Comercial', percentual: 20 },
-  { nome: 'Marketing', percentual: 30 },
-  { nome: 'Gestão de Pessoas', percentual: 10 },
-  { nome: 'Financeiro', percentual: 10 },
-]
-
-const ESCALA_LABELS = [
-  'Muito insatisfeito(a)',
-  'Insatisfeito(a)',
-  'Neutro',
-  'Satisfeito(a)',
-  'Muito satisfeito(a)',
-]
-
-const DADOS_GERAL = {
-  totalRespostas: 10,
-  mediaGeral: 2.73,
-  discordancia: '50%',
-  concordancia: '30%',
-  distribuicaoGeral: [
-    { label: 'Muito insatisfeito(a)', percentual: 10, cor: '#FF3434' },
-    { label: 'Insatisfeito(a)', percentual: 40, cor: '#FF9860' },
-    { label: 'Neutro', percentual: 20, cor: '#FFEA60' },
-    { label: 'Satisfeito(a)', percentual: 30, cor: '#60FF72' },
-    { label: 'Muito satisfeito(a)', percentual: 0, cor: '#2CA500' },
-  ],
-  perguntas: [
-    {
-      id: 1,
-      curto: 'Alinhamento das atividade',
-      enunciado:
-        '1) Você considera que as atividades atribuídas a você estão alinhadas com suas habilidades e interesses?',
-      media: 2.7,
-      distribuicao: [
-        { label: 'Muito insatisfeito(a)', percentual: 10, cor: '#FF3434' },
-        { label: 'Insatisfeito(a)', percentual: 40, cor: '#FF9860' },
-        { label: 'Neutro', percentual: 20, cor: '#FFEA60' },
-        { label: 'Satisfeito(a)', percentual: 30, cor: '#60FF72' },
-        { label: 'Muito satisfeito(a)', percentual: 0, cor: '#2CA500' },
-      ],
-    },
-    {
-      id: 2,
-      curto: 'Distribuição das tarefas',
-      enunciado: '2)Suas tarefas são bem distribuídas e organizadas?',
-      media: 3.4,
-      distribuicao: [
-        { label: 'Muito insatisfeito(a)', percentual: 0, cor: '#FF3434' },
-        { label: 'Insatisfeito(a)', percentual: 20, cor: '#FF9860' },
-        { label: 'Neutro', percentual: 30, cor: '#FFEA60' },
-        { label: 'Satisfeito(a)', percentual: 40, cor: '#60FF72' },
-        { label: 'Muito satisfeito(a)', percentual: 10, cor: '#2CA500' },
-      ],
-    },
-    {
-      id: 3,
-      curto: 'Tempo para realização',
-      enunciado:
-        '3)Você considera que possui tempo suficiente para realizar suas tarefas com qualidade?',
-      media: 2.1,
-      distribuicao: [
-        { label: 'Muito insatisfeito(a)', percentual: 40, cor: '#FF3434' },
-        { label: 'Insatisfeito(a)', percentual: 30, cor: '#FF9860' },
-        { label: 'Neutro', percentual: 10, cor: '#FFEA60' },
-        { label: 'Satisfeito(a)', percentual: 20, cor: '#60FF72' },
-        { label: 'Muito satisfeito(a)', percentual: 0, cor: '#2CA500' },
-      ],
-    },
-  ],
+function percentuais(dist) {
+  const total = somar(dist)
+  return ESCALA_LIKERT.map((opcao, i) => ({
+    label: opcao.rotulo,
+    percentual: total
+      ? Math.round(((dist?.[opcao.valor] || 0) / total) * 1000) / 10
+      : 0,
+    cor: CORES_ESCALA[i],
+  }))
 }
 
-const DADOS_POR_DIRETORIA = {
-  Marketing: {
-    totalRespostas: 3,
-    mediaGeral: 2.78,
-    discordancia: '44,4%',
-    concordancia: '33,3%',
-    perguntas: [
-      {
-        id: 1,
-        curto: 'Alinhamento das atividade',
-        enunciado:
-          '1) Você considera que as atividades atribuídas a você estão alinhadas com suas habilidades e interesses?',
-        media: 3.0,
-        mediaGeralRef: 2.7,
-        diferenca: '+0,30',
-        positiva: true,
-        distribuicao: [
-          { label: 'Muito insatisfeito(a)', percentual: 0, cor: '#FF3434' },
-          { label: 'Insatisfeito(a)', percentual: 33.3, cor: '#FF9860' },
-          { label: 'Neutro', percentual: 33.3, cor: '#FFEA60' },
-          { label: 'Satisfeito(a)', percentual: 33.3, cor: '#60FF72' },
-          { label: 'Muito satisfeito(a)', percentual: 0, cor: '#2CA500' },
-        ],
-      },
-      {
-        id: 2,
-        curto: 'Distribuição das tarefas',
-        enunciado: '2)Suas tarefas são bem distribuídas e organizadas?',
-        media: 3.67,
-        mediaGeralRef: 3.4,
-        diferenca: '+0,27',
-        positiva: true,
-        distribuicao: [
-          { label: 'Muito insatisfeito(a)', percentual: 0, cor: '#FF3434' },
-          { label: 'Insatisfeito(a)', percentual: 0, cor: '#FF9860' },
-          { label: 'Neutro', percentual: 33.3, cor: '#FFEA60' },
-          { label: 'Satisfeito(a)', percentual: 66.7, cor: '#60FF72' },
-          { label: 'Muito satisfeito(a)', percentual: 0, cor: '#2CA500' },
-        ],
-      },
-      {
-        id: 3,
-        curto: 'Tempo para realização',
-        enunciado:
-          '3)Você considera que possui tempo suficiente para realizar suas tarefas com qualidade?',
-        media: 1.67,
-        mediaGeralRef: 2.1,
-        diferenca: '-0,43',
-        positiva: false,
-        distribuicao: [
-          { label: 'Muito insatisfeito(a)', percentual: 33.3, cor: '#FF3434' },
-          { label: 'Insatisfeito(a)', percentual: 66.7, cor: '#FF9860' },
-          { label: 'Neutro', percentual: 0, cor: '#FFEA60' },
-          { label: 'Satisfeito(a)', percentual: 0, cor: '#60FF72' },
-          { label: 'Muito satisfeito(a)', percentual: 0, cor: '#2CA500' },
-        ],
-      },
-    ],
-  },
-  Presidência: { totalRespostas: 1, perguntas: [] },
-  Projetos: { totalRespostas: 2, perguntas: [] },
-  Comercial: { totalRespostas: 2, perguntas: [] },
-  'Gestão de Pessoas': { totalRespostas: 1, perguntas: [] },
-  Financeiro: { totalRespostas: 1, perguntas: [] },
+function juntarDistribuicoes(metricas) {
+  const acumulado = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  metricas.forEach((m) =>
+    NOTAS.forEach((n) => {
+      acumulado[n] += m.distribuicao?.[n] || 0
+    })
+  )
+  return acumulado
 }
 
-function classificarFaixa(media) {
-  if (media < 2.0) return { nome: 'Crítico', classe: 'pill--critico' }
-  if (media < 3.0) return { nome: 'Atenção', classe: 'pill--critico' }
-  if (media < 4.0) return { nome: 'Satisfatório', classe: 'pill--satisfatorio' }
-  return { nome: 'Excelente', classe: 'pill--satisfatorio' }
-}
-
-function formatarNota(num) {
-  return Number(num).toFixed(2).replace('.', ',').replace(/,0$/, '')
+function BarrasDistribuicao({ itens, larga = false }) {
+  return (
+    <div className="chart-wrapper">
+      <span className="chart-y-label">% Respostas</span>
+      <div
+        className={`chart-bars-container ${
+          larga ? 'chart-bars-container--wide' : ''
+        }`}
+      >
+        {itens.map((item) => (
+          <div key={item.label} className="chart-bar-group">
+            <span className="chart-bar-label">{item.label}</span>
+            <div className="chart-bar-row">
+              <div
+                className={`chart-bar-track ${
+                  larga ? 'chart-bar-track--wide' : ''
+                }`}
+              >
+                <div
+                  className="chart-bar-fill"
+                  style={{
+                    width: `${item.percentual}%`,
+                    backgroundColor: item.cor,
+                  }}
+                />
+              </div>
+              <span className="chart-bar-percent">
+                {texto(item.percentual)}%
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function Resultados() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const idPesq = searchParams.get('id_pesq') || 3
+  const idPesq = searchParams.get('id_pesq')
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [abaAtiva, setAbaAtiva] = useState('metricas')
   const [filtroArea, setFiltroArea] = useState('Geral')
   const [menuFiltroOpen, setMenuFiltroOpen] = useState(false)
-  const [dadosApi, setDadosApi] = useState(null)
 
-  // Consulta os dados de médias da pesquisa no back-end
+  const [base, setBase] = useState(null)
+  const [erro, setErro] = useState('')
+  const [mediasArea, setMediasArea] = useState({ area: null, dados: null })
+  const [feedbacks, setFeedbacks] = useState({ area: null, dados: null })
+
+  const [erroParticipacao, setErroParticipacao] = useState('')
+  const [erroFeedback, setErroFeedback] = useState('')
+
+
   useEffect(() => {
-    const areaQuery =
-      filtroArea === 'Geral' ? '' : `?area=${encodeURIComponent(filtroArea)}`
+    if (!idPesq) return
+    let cancelado = false
 
-    api
-      .get(`/pesquisas/${idPesq}/relatorios/medias${areaQuery}`)
-      .then((res) => {
-        if (res.data) {
-          setDadosApi(res.data)
+    async function carregarResultados() {
+      const [resultadoMedias, resultadoHistorico, resultadoPerguntas, resultadoDiretorias] =
+        await Promise.allSettled([
+          buscarMedias(idPesq),
+          listarHistorico(),
+          listarPerguntas(idPesq),
+          listarDiretorias(),
+        ])
+
+      if (cancelado) return
+
+      if (resultadoMedias.status === 'rejected') {
+        setErro(
+          mensagemDeErro(
+            resultadoMedias.reason,
+            'Não foi possível carregar os resultados.'
+          )
+        )
+        return
+      }
+
+      const gerais = resultadoMedias.value
+
+      const historico =
+        resultadoHistorico.status === 'fulfilled'
+          ? resultadoHistorico.value
+          : []
+
+      const perguntas =
+        resultadoPerguntas.status === 'fulfilled'
+          ? resultadoPerguntas.value
+          : []
+
+      const diretorias =
+        resultadoDiretorias.status === 'fulfilled'
+          ? resultadoDiretorias.value
+          : []
+
+      let participacao = []
+      let erroParticipacaoLocal = ''
+
+      if (resultadoDiretorias.status === 'rejected') {
+        erroParticipacaoLocal =
+          'Não foi possível carregar a participação por diretoria.'
+      } else {
+        const resultados = await Promise.allSettled(
+          diretorias.map((d) => buscarMedias(idPesq, d))
+        )
+
+        participacao = resultados.map((resultado, i) => ({
+          nome: diretorias[i],
+          quantidade:
+            resultado.status === 'fulfilled'
+              ? somar(resultado.value.metricas_por_pergunta?.[0]?.distribuicao)
+              : null,
+        }))
+
+        if (resultados.some((resultado) => resultado.status === 'rejected')) {
+          erroParticipacaoLocal =
+            'Não foi possível carregar a participação por diretoria.'
         }
+      }
+
+      if (cancelado) return
+
+      setErroParticipacao(erroParticipacaoLocal)
+      setBase({
+        gerais,
+        perguntas,
+        diretorias,
+        participacao,
+        pesquisa:
+          historico.find((p) => String(p.id_pesq) === String(idPesq)) || null,
       })
-      .catch(() => {
-        setDadosApi(null)
+    }
+
+    carregarResultados().catch((e) => {
+      if (!cancelado) {
+        setErro(
+          mensagemDeErro(e, 'Não foi possível carregar os resultados.')
+        )
+      }
+    })
+
+    return () => {
+      cancelado = true
+    }
+  }, [idPesq])
+
+
+  // Médias da diretoria escolhida
+  useEffect(() => {
+    if (!idPesq || filtroArea === 'Geral') return
+    let cancelado = false
+    buscarMedias(idPesq, filtroArea)
+      .then((dados) => {
+        if (!cancelado) setMediasArea({ area: filtroArea, dados })
       })
+      .catch((e) => {
+        if (!cancelado) setErro(mensagemDeErro(e))
+      })
+    return () => {
+      cancelado = true
+    }
   }, [idPesq, filtroArea])
 
-  const dadosAtuais =
-    filtroArea === 'Geral'
-      ? DADOS_GERAL
-      : DADOS_POR_DIRETORIA[filtroArea] || DADOS_POR_DIRETORIA.Marketing
 
-  // Calcula o total de respostas recebidas (da API ou do mock)
-  const totalRespostasVigente = (() => {
-    if (dadosApi?.metricas_por_pergunta?.length > 0) {
-      const dist = dadosApi.metricas_por_pergunta[0].distribuicao || {}
-      return (
-        (dist[1] || 0) +
-        (dist[2] || 0) +
-        (dist[3] || 0) +
-        (dist[4] || 0) +
-        (dist[5] || 0)
-      )
+  useEffect(() => {
+    if (!idPesq) return
+    let cancelado = false
+
+    buscarFeedbacks(idPesq, filtroArea === 'Geral' ? null : filtroArea)
+      .then((dados) => {
+        if (!cancelado) {
+          setFeedbacks({ area: filtroArea, dados })
+          setErroFeedback('')
+        }
+      })
+      .catch((e) => {
+        if (!cancelado) {
+          setFeedbacks({ area: filtroArea, dados: null })
+          setErroFeedback(
+            mensagemDeErro(e, 'Não foi possível carregar os comentários.')
+          )
+        }
+      })
+
+    return () => {
+      cancelado = true
     }
-    return dadosAtuais.totalRespostas
-  })()
+  }, [idPesq, filtroArea])
 
-  const respostasInsuficientes =
-    totalRespostasVigente < MINIMO_RESPOSTAS_ANONIMATO
+
+  const erroTela = !idPesq
+    ? 'Nenhuma pesquisa selecionada. Volte à Home e escolha uma pesquisa.'
+    : erro
+
+  const dadosFiltro = !base
+    ? null
+    : filtroArea === 'Geral'
+    ? base.gerais
+    : mediasArea.area === filtroArea
+    ? mediasArea.dados
+    : null
+  const feedbacksAtuais = feedbacks.area === filtroArea ? feedbacks.dados : null
+  const opcoesFiltro = ['Geral', ...(base?.diretorias || [])]
+
+  const metricas = dadosFiltro?.metricas_por_pergunta || []
+  const totalRespostas = metricas.length ? somar(metricas[0].distribuicao) : 0
+  const insuficiente =
+    Boolean(dadosFiltro) && totalRespostas < MINIMO_RESPOSTAS_ANONIMATO
+
+  const distGlobal = juntarDistribuicoes(metricas)
+  const totalNotas = somar(distGlobal)
+  const pct = (parte) =>
+    totalNotas ? Math.round((parte / totalNotas) * 1000) / 10 : 0
+  const insatisfacao = pct(distGlobal[1] + distGlobal[2])
+  const satisfacao = pct(distGlobal[4] + distGlobal[5])
+
+  const mediaGeralPorPergunta = new Map(
+    (base?.gerais?.metricas_por_pergunta || []).map((m) => [m.pergunta, m.media])
+  )
+  const perguntas = metricas.map((m, i) => ({
+    id: i,
+    curto: m.eixo,
+    enunciado: m.pergunta,
+    media: m.media,
+    faixa: m.faixa,
+    desvio: m.desvio_padrao,
+    alerta: m.alerta_variacao,
+    referencia: mediaGeralPorPergunta.get(m.pergunta),
+    distribuicao: percentuais(m.distribuicao),
+  }))
+
+  const enunciadoDiretoria =
+    base?.perguntas?.find((p) => p.tipo === 'DIRETORIA')?.enunciado ||
+    'Qual sua área de atuação/ diretoria na Include?'
+
+  const totalParticipacao =
+  base?.participacao.reduce(
+    (soma, d) => soma + (d.quantidade ?? 0),
+    0
+  ) || 0
 
   const handleReaplicarPesquisa = () => {
     navigate('/pesquisas/criar', {
       state: {
         reaplicar: {
-          titulo: 'Como está o clima na sua rotina?',
-          descricao:
-            'Queremos conhecer sua experiência com a rotina e as atividades desenvolvidas na Include! Esta pesquisa busca entender seu nível de satisfação com as tarefas, a organização e o dia a dia de trabalho, identificando pontos positivos e oportunidades de melhoria. Sua opinião é muito importante para construirmos um ambiente cada vez melhor!',
-          perguntas: DADOS_GERAL.perguntas.map((p) => ({
-            id: p.id,
-            titulo: p.enunciado,
-            tipo: 'LIKERT',
-          })),
+          idOrigem: Number(idPesq),
+          titulo: base?.pesquisa?.titulo || '',
+          descricao: base?.pesquisa?.descricao || 'Pesquisa de clima organizacional da Include Jr.',
+          perguntas: (base?.perguntas || [])
+            .filter((p) => p.tipo !== 'DIRETORIA')
+            .map((p) => ({
+              id: p.pesquisa_pergunta_id,
+              titulo: p.enunciado,
+              tipo: p.tipo,
+            })),
         },
       },
     })
   }
+
+  const textoPrazo = (() => {
+    const pesquisa = base?.pesquisa
+    if (!pesquisa) return ''
+    const dias = diasRestantes(pesquisa.data_fim)
+    if (pesquisa.situacao === 'Encerrada' || dias < 0)
+      return `Pesquisa encerrada (${formatarIntervalo(
+        pesquisa.data_inicio,
+        pesquisa.data_fim
+      )})`
+    if (dias === 0) return 'Esta pesquisa encerra hoje'
+    return `Faltam ${dias} dias para essa pesquisa ser encerrada`
+  })()
 
   return (
     <div className="results-page">
       <Header onOpenSidebar={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Abas superiores: Perguntas | Resultados */}
       <div className="results-tabs">
         <button
           type="button"
@@ -267,68 +351,83 @@ export default function Resultados() {
       </div>
 
       <main className="results-container">
-        {abaAtiva === 'perguntas' ? (
+        {erroTela && (
+          <section className="card-borda-externa metrics-summary-card">
+            <p>{erroTela}</p>
+          </section>
+        )}
+
+        {!erroTela && !base && <p>Carregando resultados...</p>}
+
+        {!erroTela && base && abaAtiva === 'perguntas' && (
           <>
             <section className="card-borda-externa survey-header-card">
               <h1 className="survey-header-card__title">
-                Como está o clima na sua rotina?
+                {base.pesquisa?.titulo || 'Pesquisa de clima'}
               </h1>
-              <p className="survey-header-card__desc">
-                Queremos conhecer sua experiência com a rotina e as atividades
-                desenvolvidas na Include! Esta pesquisa busca entender seu nível
-                de satisfação com as tarefas, a organização e o dia a dia de
-                trabalho, identificando pontos positivos e oportunidades de
-                melhoria. Sua opinião é muito importante para construirmos um
-                ambiente cada vez melhor!
-              </p>
-              <span className="survey-header-card__deadline">
-                Faltam 10 dias para essa pesquisa ser encerrada
-              </span>
+              {textoPrazo && (
+                <span className="survey-header-card__deadline">{textoPrazo}</span>
+              )}
             </section>
 
-            <section className="card-borda-externa question-card">
-              <div className="question-card__top-row">
-                <h2 className="question-card__title">
-                  Qual sua área de atuação/ diretoria na Include?
-                </h2>
-                <Pin size={28} className="question-card__pin-icon" />
-              </div>
-              <div className="question-card__options">
-                {OPCOES_FILTRO.slice(1).map((dir) => (
-                  <div
-                    key={dir}
-                    className="likert-option likert-option--disabled"
+            {base.perguntas.map((p) => {
+              if (p.tipo === 'DIRETORIA') {
+                return (
+                  <section
+                    key={p.pesquisa_pergunta_id}
+                    className="card-borda-externa question-card"
                   >
-                    <span className="likert-radio" />
-                    <span>{dir}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {DADOS_GERAL.perguntas.map((pergunta) => (
-              <section
-                key={pergunta.id}
-                className="card-borda-externa question-card"
-              >
-                <h2 className="question-card__title">{pergunta.enunciado}</h2>
-                <div className="question-card__options">
-                  {ESCALA_LABELS.map((opcao) => (
-                    <div
-                      key={opcao}
-                      className="likert-option likert-option--disabled"
-                    >
-                      <span className="likert-radio" />
-                      <span>{opcao}</span>
+                    <div className="question-card__top-row">
+                      <h2 className="question-card__title">
+                        {enunciadoDiretoria}
+                      </h2>
+                      <Pin size={28} className="question-card__pin-icon" />
                     </div>
-                  ))}
-                </div>
-              </section>
-            ))}
+                    <div className="question-card__options">
+                      {base.diretorias.map((dir) => (
+                        <div
+                          key={dir}
+                          className="likert-option likert-option--disabled"
+                        >
+                          <span className="likert-radio" />
+                          <span>{dir}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )
+              }
+              return (
+                <section
+                  key={p.pesquisa_pergunta_id}
+                  className="card-borda-externa question-card"
+                >
+                  <h2 className="question-card__title">{p.enunciado}</h2>
+                  {p.tipo === 'LIKERT' ? (
+                    <div className="question-card__options">
+                      {ESCALA_LIKERT.map((opcao) => (
+                        <div
+                          key={opcao.valor}
+                          className="likert-option likert-option--disabled"
+                        >
+                          <span className="likert-radio" />
+                          <span>{opcao.rotulo}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="builder-open-text-preview">
+                      Resposta aberta (texto livre)
+                    </div>
+                  )}
+                </section>
+              )
+            })}
           </>
-        ) : (
+        )}
+
+        {!erroTela && base && abaAtiva === 'metricas' && (
           <>
-            {/* Filtro por Diretoria */}
             <div className="results-filter-row">
               <span className="results-filter-label">Resultado:</span>
               <div className="results-filter-dropdown-wrap">
@@ -343,7 +442,7 @@ export default function Resultados() {
 
                 {menuFiltroOpen && (
                   <div className="results-filter-menu">
-                    {OPCOES_FILTRO.map((item) => (
+                    {opcoesFiltro.map((item) => (
                       <button
                         key={item}
                         type="button"
@@ -361,8 +460,9 @@ export default function Resultados() {
               </div>
             </div>
 
-            {/* Verifica se atingiu o mínimo de 3 respostas antes de exibir os gráficos */}
-            {respostasInsuficientes ? (
+            {!dadosFiltro && <p>Carregando...</p>}
+
+            {insuficiente && (
               <section className="card-borda-externa metrics-summary-card">
                 <div
                   className="insufficient-data-box"
@@ -378,114 +478,89 @@ export default function Resultados() {
                   </p>
                 </div>
               </section>
-            ) : (
+            )}
+
+            {dadosFiltro && !insuficiente && (
               <>
                 <section className="card-borda-externa metrics-summary-card">
                   <h1 className="metrics-summary-card__count">
                     {filtroArea === 'Geral'
-                      ? `${totalRespostasVigente} Respostas`
-                      : `0${totalRespostasVigente} Respostas (${filtroArea})`}
+                      ? `${totalRespostas} Respostas`
+                      : `${totalRespostas} Respostas (${filtroArea})`}
                   </h1>
                   <p className="metrics-summary-card__desc">
-                    {filtroArea === 'Geral'
-                      ? 'Com base nas 10 respostas, temos um cenário que indica insatisfação moderada com a organização da rotina e a distribuição das atividades.'
-                      : `Com base nas 0${totalRespostasVigente} respostas dadas pela diretoria de ${filtroArea}, temos um cenário que indica insatisfação moderada com a organização da rotina e a distribuição das atividades.`}
+                    Com base nas {totalRespostas} respostas
+                    {filtroArea === 'Geral' ? '' : ` da diretoria de ${filtroArea}`},
+                    a média geral é {formatarNumero(dadosFiltro.media_geral)}/5,
+                    classificada como {dadosFiltro.faixa_geral}.
                   </p>
                 </section>
 
-                {filtroArea === 'Geral' && (
+                {filtroArea === 'Geral' && erroParticipacao && (
                   <section className="card-borda-externa metrics-chart-card">
-                    <div className="question-card__top-row">
-                      <h2 className="metrics-chart-card__title">
-                        Qual sua área de atuação/ diretoria na Include?
-                      </h2>
-                      <Pin size={28} className="question-card__pin-icon" />
-                    </div>
-
-                    <div className="chart-wrapper">
-                      <span className="chart-y-label">% Respostas</span>
-                      <div className="chart-bars-container">
-                        {DIRETORIAS_PARTICIPACAO.map((dir) => (
-                          <div key={dir.nome} className="chart-bar-group">
-                            <span className="chart-bar-label">{dir.nome}</span>
-                            <div className="chart-bar-row">
-                              <div className="chart-bar-track">
-                                <div
-                                  className="chart-bar-fill"
-                                  style={{
-                                    width: `${dir.percentual}%`,
-                                    backgroundColor: '#FF9860',
-                                  }}
-                                />
-                              </div>
-                              <span className="chart-bar-percent">
-                                {dir.percentual}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <p>{erroParticipacao}</p>
                   </section>
                 )}
 
-                {dadosAtuais.perguntas.map((pergunta) => {
-                  const faixaInfo = classificarFaixa(pergunta.media)
-                  return (
-                    <section
-                      key={pergunta.id}
-                      className="card-borda-externa metrics-chart-card"
-                    >
+                {filtroArea === 'Geral' && !erroParticipacao && totalParticipacao > 0 && (
+                  <section className="card-borda-externa metrics-chart-card">
+                    <div className="question-card__top-row">
                       <h2 className="metrics-chart-card__title">
-                        {pergunta.enunciado}
+                        {enunciadoDiretoria}
                       </h2>
+                      <Pin size={28} className="question-card__pin-icon" />
+                    </div>
+                    <BarrasDistribuicao
+                      itens={base.participacao
+                      .filter((d) => d.quantidade !== null)
+                      .map((d) => ({
+                        label: d.nome,
+                        percentual:
+                          Math.round((d.quantidade / totalParticipacao) * 1000) / 10,
+                        cor: '#FF9860',
+                      }))}
+                    />
+                  </section>
+                )}
 
-                      <div className="metrics-question-content-row">
-                        <div className="chart-wrapper">
-                          <span className="chart-y-label">% Respostas</span>
+                {perguntas.map((pergunta) => (
+                  <section
+                    key={pergunta.id}
+                    className="card-borda-externa metrics-chart-card"
+                  >
+                    <h2 className="metrics-chart-card__title">
+                      {pergunta.enunciado}
+                    </h2>
 
-                          <div className="chart-bars-container">
-                            {pergunta.distribuicao.map((item) => (
-                              <div key={item.label} className="chart-bar-group">
-                                <span className="chart-bar-label">
-                                  {item.label}
-                                </span>
-                                <div className="chart-bar-row">
-                                  <div className="chart-bar-track">
-                                    <div
-                                      className="chart-bar-fill"
-                                      style={{
-                                        width: `${item.percentual}%`,
-                                        backgroundColor: item.cor,
-                                      }}
-                                    />
-                                  </div>
-                                  <span className="chart-bar-percent">
-                                    {String(item.percentual).replace('.', ',')}%
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                    <div className="metrics-question-content-row">
+                      <BarrasDistribuicao itens={pergunta.distribuicao} />
+
+                      <div className="metrics-average-box">
+                        <span className="metrics-average-box__label">
+                          Média de satisfação
+                        </span>
+                        <div
+                          className="metrics-average-pill"
+                          style={{ backgroundColor: CORES_FAIXA[pergunta.faixa] }}
+                        >
+                          {formatarNumero(pergunta.media)}/5
                         </div>
-
-                        <div className="metrics-average-box">
-                          <span className="metrics-average-box__label">
-                            Média de satisfação
-                          </span>
-                          <div
-                            className={`metrics-average-pill ${faixaInfo.classe}`}
+                        <span className="metrics-average-box__faixa">
+                          {pergunta.faixa}
+                        </span>
+                        {pergunta.alerta && pergunta.alerta !== 'Normal' && (
+                          <span
+                            className="metrics-average-box__faixa"
+                            style={{ color: '#B00020' }}
                           >
-                            {formatarNota(pergunta.media)}/5
-                          </div>
-                          <span className="metrics-average-box__faixa">
-                            {faixaInfo.nome}
+                            Atenção: {pergunta.alerta} (desvio{' '}
+                            {formatarNumero(pergunta.desvio)})
                           </span>
-                        </div>
+                        )}
                       </div>
-                    </section>
-                  )
-                })}
+                    </div>
+                  </section>
+                ))}
 
                 <section className="card-borda-externa metrics-bottom-summary-card">
                   <h2 className="metrics-bottom-summary__title">
@@ -496,49 +571,40 @@ export default function Resultados() {
 
                   <div className="metrics-kpis-row">
                     <div className="metrics-kpi-item">
-                      <span className="metrics-kpi-value">
-                        {totalRespostasVigente}
-                      </span>
+                      <span className="metrics-kpi-value">{totalRespostas}</span>
                       <span className="metrics-kpi-label">Participantes</span>
                     </div>
-
                     <div className="metrics-kpi-item">
                       <span className="metrics-kpi-value">
-                        {dadosAtuais.discordancia}
+                        {texto(insatisfacao)}%
                       </span>
                       <span className="metrics-kpi-label">
                         Respostas de
                         <br />
-                        discordância
+                        insatisfação
                       </span>
                     </div>
-
                     <div className="metrics-kpi-item">
                       <span className="metrics-kpi-value">
-                        {dadosAtuais.concordancia}
+                        {texto(satisfacao)}%
                       </span>
                       <span className="metrics-kpi-label">
                         Respostas de
                         <br />
-                        concordância
+                        satisfação
                       </span>
                     </div>
-
                     <div className="metrics-kpi-item">
                       <div
-                        className={`metrics-average-pill metrics-average-pill--large ${
-                          classificarFaixa(dadosAtuais.mediaGeral).classe
-                        }`}
+                        className="metrics-average-pill metrics-average-pill--large"
+                        style={{
+                          backgroundColor: CORES_FAIXA[dadosFiltro.faixa_geral],
+                        }}
                       >
-                        {String(
-                          dadosApi?.media_geral || dadosAtuais.mediaGeral
-                        ).replace('.', ',')}
-                        /5
+                        {formatarNumero(dadosFiltro.media_geral)}/5
                       </div>
                       <span className="metrics-kpi-label">
-                        {filtroArea === 'Geral'
-                          ? 'Índice geral de\nsatisfação'
-                          : `Índice de satisfação\n${filtroArea}`}
+                        Índice geral de satisfação ({dadosFiltro.faixa_geral})
                       </span>
                     </div>
                   </div>
@@ -548,42 +614,13 @@ export default function Resultados() {
                       <h3 className="metrics-Distribution-subtitle">
                         Distribuição das respostas
                       </h3>
-                      <div className="chart-wrapper">
-                        <span className="chart-y-label">% Respostas</span>
-                        <div className="chart-bars-container chart-bars-container--wide">
-                          {DADOS_GERAL.distribuicaoGeral.map((item) => (
-                            <div key={item.label} className="chart-bar-group">
-                              <span className="chart-bar-label">
-                                {item.label}
-                              </span>
-                              <div className="chart-bar-row">
-                                <div className="chart-bar-track chart-bar-track--wide">
-                                  <div
-                                    className="chart-bar-fill"
-                                    style={{
-                                      width: `${item.percentual}%`,
-                                      backgroundColor: item.cor,
-                                    }}
-                                  />
-                                </div>
-                                <span className="chart-bar-percent">
-                                  {item.percentual}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <BarrasDistribuicao itens={percentuais(distGlobal)} larga />
                     </div>
                   ) : (
                     <div className="metrics-area-comparison">
                       <h3 className="metrics-Distribution-subtitle">
                         Comparativo em relação a média geral
                       </h3>
-                      <p className="metrics-comparison-hint">
-                        Comparação das médias por pergunta
-                      </p>
-
                       <table className="metrics-comparison-table">
                         <thead>
                           <tr>
@@ -594,26 +631,72 @@ export default function Resultados() {
                           </tr>
                         </thead>
                         <tbody>
-                          {dadosAtuais.perguntas.map((p) => (
-                            <tr key={p.id}>
-                              <td>{p.curto}</td>
-                              <td>
-                                {p.mediaGeralRef.toFixed(2).replace('.', ',')}
-                              </td>
-                              <td>{p.media.toFixed(2).replace('.', ',')}</td>
-                              <td
-                                className={
-                                  p.positiva ? 'diff-positive' : 'diff-negative'
-                                }
-                              >
-                                {p.diferenca}
-                              </td>
-                            </tr>
-                          ))}
+                          {perguntas.map((p) => {
+                            const diferenca =
+                              p.referencia === undefined
+                                ? null
+                                : p.media - p.referencia
+                            return (
+                              <tr key={p.id}>
+                                <td>{p.curto}</td>
+                                <td>
+                                  {p.referencia === undefined
+                                    ? '-'
+                                    : formatarNumero(p.referencia)}
+                                </td>
+                                <td>{formatarNumero(p.media)}</td>
+                                <td
+                                  className={
+                                    diferenca !== null && diferenca < 0
+                                      ? 'diff-negative'
+                                      : 'diff-positive'
+                                  }
+                                >
+                                  {diferenca === null
+                                    ? '-'
+                                    : `${diferenca > 0 ? '+' : ''}${formatarNumero(
+                                        diferenca
+                                      )}`}
+                                </td>
+                              </tr>
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
                   )}
+                </section>
+
+                <section className="card-borda-externa metrics-chart-card">
+                  <h2 className="metrics-chart-card__title">
+                    Desafios do dia a dia (por categoria)
+                  </h2>
+                  {erroFeedback && <p>{erroFeedback}</p>}
+
+                  {!erroFeedback && !feedbacksAtuais && (
+                    <p>Carregando comentários...</p>
+                  )}
+
+                  {!erroFeedback &&
+                    feedbacksAtuais &&
+                    Object.keys(feedbacksAtuais).length === 0 && (
+                      <p>Nenhum comentário registrado.</p>
+                    )}
+
+                  {!erroFeedback &&
+                    feedbacksAtuais &&
+                    Object.entries(feedbacksAtuais).map(([categoria, lista]) => (
+                      <div key={categoria} style={{ marginBottom: 16 }}>
+                        <h3>
+                          {categoria} ({lista.length})
+                        </h3>
+                        <ul>
+                          {lista.map((comentario, i) => (
+                            <li key={i}>{comentario}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                 </section>
               </>
             )}
