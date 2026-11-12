@@ -27,3 +27,10 @@ export async function definirLider(email, isLider) {
     )
     return rows[0]
 }
+
+export async function listarLideres() {
+    const { rows } = await pool.query(
+        'SELECT id_user, nome, email FROM usuarios WHERE is_lider = true ORDER BY nome'
+    )
+    return rows
+}

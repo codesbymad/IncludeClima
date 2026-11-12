@@ -19,3 +19,5 @@ export async function alterarLider(email, isLider, idSolicitante) {
 
     return UsuarioRepository.definirLider(emailNormalizado, isLider)
 }
+
+export const listarLideres = () => UsuarioRepository.listarLideres()
