@@ -46,24 +46,31 @@ export default function Sidebar({ isOpen, onClose }) {
             Home
           </button>
 
-        {usuario?.isLider && (
-          <>
-            <button
-              type="button"
-              className="app-sidebar__link"
-              onClick={() => handleNavigate('/resultados-gerais')}
-            >
-              Resultados Gerais
-            </button>
-            <button
-              type="button"
-              className="app-sidebar__link"
-              onClick={() => handleNavigate('/pesquisas/criar')}
-            >
-              Criação de pesquisas
-            </button>
-          </>
-        )}
+          {usuario?.isLider && (
+            <>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/resultados-gerais')}
+              >
+                Resultados Gerais
+              </button>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/pesquisas/criar')}
+              >
+                Criação de pesquisas
+              </button>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/lideranca')}
+              >
+                Liderança
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="app-sidebar__footer">
@@ -78,13 +85,14 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
       </aside>
 
-      {/* Pop-up do Figma novo: "Deseja sair do IncludeClima pirata?" */}
       <ConfirmModal
         isOpen={modalSairOpen}
         title="Deseja sair do IncludeClima pirata?"
         confirmText="Sair"
         cancelText="Cancelar"
         onConfirm={() => {
+          localStorage.removeItem('includeclima_token')
+          localStorage.removeItem('includeclima_user')
           setModalSairOpen(false)
           sair()
           handleNavigate('/login')

@@ -144,11 +144,18 @@ export default function ResponderPesquisa() {
           </section>
         ))}
 
-        {/* Card Final de Finalização */}
+        {/* Card Final com Política de Anonimato */}
         <section className="card-borda-externa survey-submit-card">
           <h2 className="survey-submit-card__title">
-            Finalizou suas respostas, pirata?
+            Deseja finalizar e enviar suas respostas?
           </h2>
+
+          <p className="survey-submit-card__anonymity-text">
+            Lembre-se: o IncludeClima! adota uma política de anonimato durante as pesquisas.
+            Nenhuma resposta será associada a você. Sinta-se seguro(a) para expressar sua
+            opinião com sinceridade!
+          </p>
+
           <div className="survey-submit-card__actions">
             <button
               type="button"
