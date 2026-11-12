@@ -1,7 +1,7 @@
-import api from '../../services/api'
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Mail, Eye, EyeOff } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 import bgLogin from '../../assets/bg-login.png'
 import logoInclude from '../../assets/logo-include.png'
 import barquinhoImg from '../../assets/barquinho.png'
@@ -9,6 +9,8 @@ import './Auth.css'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { entrar } = useAuth()
+  const [mensagemErro, setMensagemErro] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
@@ -18,32 +20,21 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email.trim() || !senha.trim()) {
+      setMensagemErro('Informe seu email e sua senha.')
       setErroAberto(true)
       return
     }
 
     try {
-      // Chama a rota POST /auth/login
-      const response = await api.post('/auth/login', { email, senha })
-      const { token, usuario, user } = response.data
-
-      if (token) {
-        localStorage.setItem('includeclima_token', token)
-      }
-      if (usuario || user) {
-        localStorage.setItem(
-          'includeclima_user',
-          JSON.stringify(usuario || user)
-        )
-      }
-
-      navigate('/home')
-    } catch (error) {
-      if (error.response) {
-        setErroAberto(true)
-      } else {
-        navigate('/home')
-      }
+     await entrar(email.trim(), senha)
+     navigate('/home')
+    } catch (erro) {
+      setMensagemErro(
+        erro.response
+          ? erro.response.data?.erro || 'Não foi possível entrar. Tente novamente.'
+          : 'Não foi possível conectar ao servidor'
+      )
+      setErroAberto(true)
     }
   }
 
@@ -137,8 +128,7 @@ export default function Login() {
               className="popup-erro__wave-img"
             />
             <p className="popup-erro__texto">
-              o erro pode estar no seu Login ou Senha. Confira suas informações
-              e tente novamente
+              {mensagemErro}
             </p>
           </div>
         </div>

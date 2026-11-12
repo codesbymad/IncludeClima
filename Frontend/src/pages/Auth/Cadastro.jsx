@@ -1,7 +1,7 @@
-import api from '../../services/api'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 import bgLogin from '../../assets/bg-login.png'
 import logoInclude from '../../assets/logo-include.png'
 import barquinhoImg from '../../assets/barquinho.png'
@@ -9,6 +9,9 @@ import './Auth.css'
 
 export default function Cadastro() {
   const navigate = useNavigate()
+  const { cadastrar } = useAuth()
+  const [mensagemErro, setMensagemErro] = useState('')
+  const [erroAberto, setErroAberto] = useState(false)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -16,25 +19,36 @@ export default function Cadastro() {
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
   const [lembrar, setLembrar] = useState(true)
-  const [erroAberto, setErroAberto] = useState(false)
+  const falha = (texto) => {
+    setMensagemErro(texto)
+    setErroAberto(true)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!nome.trim() || !email.trim() || !senha.trim() || senha !== confirmarSenha) {
-      setErroAberto(true)
+    if (!nome.trim() || !email.trim() || !senha.trim()) {
+      falha('Preencha todos os campos.')
+      return
+    }
+    if (senha.length < 6) {
+      falha('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+    if (senha !== confirmarSenha) {
+      falha('As senhas não coincidem.')
       return
     }
     
     // Chama a rota POST /auth/cadastro
     try {
-      await api.post('/auth/cadastro', { nome, email, senha })
+      await cadastrar(nome.trim(), email.trim(), senha)
       navigate('/login')
-    } catch (error) {
-      if (error.response) {
-        setErroAberto(true)
-      } else {
-        navigate('/login')
-      }
+    } catch (erro) {
+      falha(
+        erro.response
+          ? erro.response.data?.erro || 'Não foi possível criar a conta.'
+          : 'Não foi possível conectar ao servidor.'
+      )
     }
   }
 
@@ -158,8 +172,7 @@ export default function Cadastro() {
               className="popup-erro__wave-img"
             />
             <p className="popup-erro__texto">
-              o erro pode estar no seu Login ou Senha. Confira suas informações
-              e tente novamente
+              {mensagemErro}
             </p>
           </div>
         </div>

@@ -1,18 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import ConfirmModal from './ConfirmModal'
 import './Navigation.css'
 
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
+  const { usuario, sair } = useAuth()
   const [modalSairOpen, setModalSairOpen] = useState(false)
-
-  // Verifica se o usuário logado possui permissão de líder
-  const usuarioSalvo = localStorage.getItem('includeclima_user')
-  const usuario = usuarioSalvo ? JSON.parse(usuarioSalvo) : null
-  const mostrarOpcoesLider =
-    !usuario || usuario.isLider !== false && usuario.idLider !== false
 
   const handleNavigate = (path) => {
     navigate(path)
@@ -49,28 +45,31 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             Home
           </button>
-          <button
-            type="button"
-            className="app-sidebar__link"
-            onClick={() => handleNavigate('/resultados-gerais')}
-          >
-            Resultados Gerais
-          </button>
-          <button
-            type="button"
-            className="app-sidebar__link"
-            onClick={() => handleNavigate('/pesquisas/criar')}
-          >
-            Criação de pesquisas
-          </button>
-          {mostrarOpcoesLider && (
-            <button
-              type="button"
-              className="app-sidebar__link"
-              onClick={() => handleNavigate('/lideranca')}
-            >
-              Liderança
-            </button>
+
+          {usuario?.isLider && (
+            <>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/resultados-gerais')}
+              >
+                Resultados Gerais
+              </button>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/pesquisas/criar')}
+              >
+                Criação de pesquisas
+              </button>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/lideranca')}
+              >
+                Liderança
+              </button>
+            </>
           )}
         </nav>
 
@@ -95,8 +94,8 @@ export default function Sidebar({ isOpen, onClose }) {
           localStorage.removeItem('includeclima_token')
           localStorage.removeItem('includeclima_user')
           setModalSairOpen(false)
-          onClose()
-          navigate('/login')
+          sair()
+          handleNavigate('/login')
         }}
         onCancel={() => setModalSairOpen(false)}
       />

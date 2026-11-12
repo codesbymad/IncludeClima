@@ -8,7 +8,7 @@ export async function cadastro(req, res, next) {
                 id: usuario.id_user,
                 nome: usuario.nome,
                 email: usuario.email,
-                idLider: usuario.is_lider
+                isLider: usuario.is_lider
             })
     } catch(error){
         next(error)
@@ -37,7 +37,7 @@ export async function me(req, res, next) {
             id: usuario.id_user,
             nome: usuario.nome,
             email: usuario.email,
-            idLider: usuario.is_lider
+            isLider: usuario.is_lider
         })
     } catch(error){
         next(error)

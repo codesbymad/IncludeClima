@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import routes from './Routes/Index.js'
-import errorHandler from './Middlewares/errorHandler.js'
+import errorHandler from './Middlewares/ErrorHandler.js'
 import swaggerUi from 'swagger-ui-express'
 import swaggerSpec from './Config/Swagger.js'
 
