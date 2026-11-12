@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import ConfirmModal from './ConfirmModal'
 import './Navigation.css'
 
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
+  const { usuario, sair } = useAuth()
   const [modalSairOpen, setModalSairOpen] = useState(false)
 
   const handleNavigate = (path) => {
@@ -43,20 +45,25 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             Home
           </button>
-          <button
-            type="button"
-            className="app-sidebar__link"
-            onClick={() => handleNavigate('/resultados-gerais')}
-          >
-            Resultados Gerais
-          </button>
-          <button
-            type="button"
-            className="app-sidebar__link"
-            onClick={() => handleNavigate('/pesquisas/criar')}
-          >
-            Criação de pesquisas
-          </button>
+
+        {usuario?.isLider && (
+          <>
+            <button
+              type="button"
+              className="app-sidebar__link"
+              onClick={() => handleNavigate('/resultados-gerais')}
+            >
+              Resultados Gerais
+            </button>
+            <button
+              type="button"
+              className="app-sidebar__link"
+              onClick={() => handleNavigate('/pesquisas/criar')}
+            >
+              Criação de pesquisas
+            </button>
+          </>
+        )}
         </nav>
 
         <div className="app-sidebar__footer">
@@ -79,8 +86,8 @@ export default function Sidebar({ isOpen, onClose }) {
         cancelText="Cancelar"
         onConfirm={() => {
           setModalSairOpen(false)
-          onClose()
-          navigate('/login')
+          sair()
+          handleNavigate('/login')
         }}
         onCancel={() => setModalSairOpen(false)}
       />
