@@ -14,27 +14,30 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
-  const [lembrar, setLembrar] = useState(true)
   const [erroAberto, setErroAberto] = useState(false)
+  const [enviando, setEnviando] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (enviando) return
     if (!email.trim() || !senha.trim()) {
       setMensagemErro('Informe seu email e sua senha.')
       setErroAberto(true)
       return
     }
-
+    setEnviando(true)
     try {
-     await entrar(email.trim(), senha)
-     navigate('/home')
+      await entrar(email.trim(), senha)
+      navigate('/home')
     } catch (erro) {
       setMensagemErro(
         erro.response
           ? erro.response.data?.erro || 'Não foi possível entrar. Tente novamente.'
-          : 'Não foi possível conectar ao servidor'
+          : 'Não foi possível conectar ao servidor.'
       )
       setErroAberto(true)
+    } finally {
+      setEnviando(false)
     }
   }
 
@@ -90,20 +93,12 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="auth-options-row">
-              <label className="auth-remember">
-                <input
-                  type="checkbox"
-                  checked={lembrar}
-                  onChange={(e) => setLembrar(e.target.checked)}
-                />
-                <span>Lembre-me</span>
-              </label>
-              <span className="auth-forgot">Esqueceu a senha?</span>
-            </div>
-
-            <button type="submit" className="auth-submit-btn">
-              Login
+            <button
+              type="submit"
+              className="auth-submit-btn"
+              disabled={enviando}
+            >
+              {enviando ? 'Entrando...' : 'Login'}
             </button>
           </form>
 
@@ -119,7 +114,7 @@ export default function Login() {
       {/* Pop-up de Erro*/}
       {erroAberto && (
         <div className="auth-modal-overlay" onClick={() => setErroAberto(false)}>
-          <div className="popup-erro" onClick={() => setErroAberto(false)}>
+          <div className="popup-erro" onClick={(e) => e.stopPropagation()}>
             <h3 className="popup-erro__titulo">Algo de errado aconteceu!</h3>
             <p className="popup-erro__subtitulo">Mantenha a calma pirata</p>
             <img

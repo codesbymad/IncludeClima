@@ -91,8 +91,6 @@ export default function Sidebar({ isOpen, onClose }) {
         confirmText="Sair"
         cancelText="Cancelar"
         onConfirm={() => {
-          localStorage.removeItem('includeclima_token')
-          localStorage.removeItem('includeclima_user')
           setModalSairOpen(false)
           sair()
           handleNavigate('/login')

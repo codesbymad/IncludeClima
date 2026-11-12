@@ -1,37 +1,29 @@
 import { useState, useEffect } from 'react'
 import { PlusCircle, ArrowRight } from 'lucide-react'
+import { alterarLider, listarLideres } from '../../services/pesquisaService'
+import { mensagemDeErro } from '../../utils/erros'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
 import ConfirmModal from '../../components/ConfirmModal'
-import api from '../../services/api'
 import patinhoLider from '../../assets/patinho-lider.png'
 import barquinhoImg from '../../assets/barquinho.png'
 import './Lideranca.css'
 
-const LIDERES_INICIAIS = [
-  {
-    id: 1,
-    nome: 'Letícia Portela Gonçalves',
-    email: 'leticia.portgon@alu.ufc.br',
-  },
-  {
-    id: 2,
-    nome: 'Rodrigo Ribeiro Diogenis',
-    email: 'rodrib.dio@alu.ufc.br',
-  },
-  {
-    id: 3,
-    nome: 'Pedro Ricardo Feitosa',
-    email: 'Pedrinho_feitosa@alu.ufc.br',
-  },
-]
-
 export default function Lideranca() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [lideres, setLideres] = useState(() => {
-    const salvos = localStorage.getItem('includeclima_lideres')
-    return salvos ? JSON.parse(salvos) : LIDERES_INICIAIS
-  })
+  const [lideres, setLideres] = useState([])
+  const [erroLista, setErroLista] = useState('')
+  const [carregando, setCarregando] = useState(true)
+  const [processando, setProcessando] = useState(false)
+
+  useEffect(() => {
+    listarLideres()
+      .then(setLideres)
+      .catch((e) =>
+        setErroLista(mensagemDeErro(e, 'Não foi possível carregar os líderes.'))
+      )
+      .finally(() => setCarregando(false))
+  }, [])
 
   const [liderSelecionado, setLiderSelecionado] = useState(null)
   const [modalExcluirOpen, setModalExcluirOpen] = useState(false)
@@ -39,84 +31,47 @@ export default function Lideranca() {
   const [novoEmail, setNovoEmail] = useState('')
   const [mensagemErro, setMensagemErro] = useState('')
 
-  // Sincroniza a lista local no navegador
-  useEffect(() => {
-    localStorage.setItem('includeclima_lideres', JSON.stringify(lideres))
-  }, [lideres])
-
-  // Abre o modal de confirmação para remover liderança
   const abrirModalExcluir = (lider) => {
     setLiderSelecionado(lider)
     setModalExcluirOpen(true)
   }
 
-  // Chama PATCH /usuarios/lider com isLider: false
   const handleConfirmarExclusao = async () => {
-    if (!liderSelecionado) return
-
+    if (!liderSelecionado || processando) return
+    setProcessando(true)
     try {
-      await api.patch('/usuarios/lider', {
-        email: liderSelecionado.email,
-        isLider: false,
-      })
-    } catch {
-      // Mantém a atualização na interface mesmo se o back-end estiver offline
+      await alterarLider(liderSelecionado.email, false)
+      setLideres(await listarLideres())
+      setErroLista('')
+    } catch (erro) {
+      setErroLista(mensagemDeErro(erro, 'Não foi possível remover a liderança.'))
+    } finally {
+      setProcessando(false)
+      setModalExcluirOpen(false)
+      setLiderSelecionado(null)
     }
-
-    setLideres((prev) =>
-      prev.filter((item) => item.email !== liderSelecionado.email)
-    )
-    setModalExcluirOpen(false)
-    setLiderSelecionado(null)
   }
 
-  // Chama PATCH /usuarios/lider com isLider: true
   const handleAdicionarLider = async (e) => {
     e.preventDefault()
-    const emailLimpo = novoEmail.trim()
-
+    if (processando) return
+    const emailLimpo = novoEmail.trim().toLowerCase()
     if (!emailLimpo || !emailLimpo.includes('@')) {
       setMensagemErro('Informe um e-mail válido.')
       return
     }
-
-    let nomeRetornado = emailLimpo
-      .split('@')[0]
-      .replace(/[._]/g, ' ')
-      .replace(/\b\w/g, (l) => l.toUpperCase())
-
+    setProcessando(true)
     try {
-      const res = await api.patch('/usuarios/lider', {
-        email: emailLimpo,
-        isLider: true,
-      })
-      if (res.data?.nome) {
-        nomeRetornado = res.data.nome
-      }
-    } catch (error) {
-      if (error.response?.data?.erro) {
-        setMensagemErro(error.response.data.erro)
-        return
-      }
+      await alterarLider(emailLimpo, true)
+      setLideres(await listarLideres())
+      setNovoEmail('')
+      setMensagemErro('')
+      setModalAdicionarOpen(false)
+    } catch (erro) {
+      setMensagemErro(mensagemDeErro(erro, 'Não foi possível adicionar a liderança.'))
+    } finally {
+      setProcessando(false)
     }
-
-    setLideres((prev) => {
-      if (prev.some((l) => l.email.toLowerCase() === emailLimpo.toLowerCase())) {
-        return prev
-      }
-      return [
-        ...prev,
-        {
-          id: Date.now(),
-          nome: nomeRetornado,
-          email: emailLimpo,
-        },
-      ]
-    })
-
-    setNovoEmail('')
-    setMensagemErro('')
-    setModalAdicionarOpen(false)
   }
 
   return (
@@ -142,6 +97,14 @@ export default function Lideranca() {
             <PlusCircle size={38} strokeWidth={1.8} color="#FFFFFF" />
           </button>
         </div>
+
+        {erroLista && <p>{erroLista}</p>}
+
+        {carregando && <p>Carregando líderes...</p>}
+
+        {!carregando && !erroLista && lideres.length === 0 && (
+          <p>Nenhum líder cadastrado.</p>
+        )}
 
         {/* Lista de cards de líderes */}
         <div className="leadership-list">
@@ -175,8 +138,8 @@ export default function Lideranca() {
       {/* Modal de confirmação para remover líder */}
       <ConfirmModal
         isOpen={modalExcluirOpen}
-        title="Deseja excluir este Líder?"
-        confirmText="Excluir Liderança"
+        title={`Remover a liderança de ${liderSelecionado?.nome || 'este usuário'}? A conta será mantida.`}
+        confirmText="Remover liderança"
         cancelText="Cancelar"
         onConfirm={handleConfirmarExclusao}
         onCancel={() => {
@@ -218,7 +181,11 @@ export default function Lideranca() {
               )}
 
               <div className="add-leader-modal__actions">
-                <button type="submit" className="add-leader-modal__btn-submit">
+                <button
+                  type="submit"
+                  className="add-leader-modal__btn-submit"
+                  disabled={processando}
+                >
                   Adicionar nova liderança
                 </button>
                 <button

@@ -25,6 +25,8 @@ export default function Home() {
   const [erroLista, setErroLista] = useState('')
   const [pesquisaSelecionada, setPesquisaSelecionada] = useState(null)
 
+  const primeiroNome = usuario?.nome?.trim().split(' ')[0]
+
   useEffect(() => {
     listarHistorico()
       .then(setPesquisas)
@@ -37,7 +39,7 @@ export default function Home() {
   const converter = (p) => ({
     id: p.id_pesq,
     titulo: p.titulo,
-    descricao: `Situação: ${p.situacao}`,
+    descricao: p.descricao || `Situação: ${p.situacao}`,
     periodo: formatarIntervalo(p.data_inicio, p.data_fim)
   })
 
@@ -55,7 +57,9 @@ export default function Home() {
       {/* Hero com o Mascote Patinho grande e colado na borda direita */}
       <section className="home-hero">
         <div className="home-hero__text">
-          <p className="home-hero__greeting">Seja bem vindo pirata,</p>
+          <p className="home-hero__greeting">
+            {primeiroNome ? `Seja bem-vindo(a), ${primeiroNome}!` : 'Seja bem-vindo(a)!'}
+          </p>
           <div className="home-hero__brand-box">
             <h1 className="home-hero__brand">A IncludeClima</h1>
           </div>

@@ -18,7 +18,7 @@ export default function Cadastro() {
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
-  const [lembrar, setLembrar] = useState(true)
+  const [enviando, setEnviando] = useState(false)
   const falha = (texto) => {
     setMensagemErro(texto)
     setErroAberto(true)
@@ -26,8 +26,13 @@ export default function Cadastro() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (enviando) return
     if (!nome.trim() || !email.trim() || !senha.trim()) {
       falha('Preencha todos os campos.')
+      return
+    }
+    if (!confirmarSenha) {
+      falha('Confirme sua senha.')
       return
     }
     if (senha.length < 6) {
@@ -38,8 +43,7 @@ export default function Cadastro() {
       falha('As senhas não coincidem.')
       return
     }
-    
-    // Chama a rota POST /auth/cadastro
+    setEnviando(true)
     try {
       await cadastrar(nome.trim(), email.trim(), senha)
       navigate('/login')
@@ -49,6 +53,8 @@ export default function Cadastro() {
           ? erro.response.data?.erro || 'Não foi possível criar a conta.'
           : 'Não foi possível conectar ao servidor.'
       )
+    } finally {
+      setEnviando(false)
     }
   }
 
@@ -142,19 +148,12 @@ export default function Cadastro() {
               </button>
             </div>
 
-            <div className="auth-options-row">
-              <label className="auth-remember">
-                <input
-                  type="checkbox"
-                  checked={lembrar}
-                  onChange={(e) => setLembrar(e.target.checked)}
-                />
-                <span>Lembre-me sempre</span>
-              </label>
-            </div>
-
-            <button type="submit" className="auth-submit-btn">
-              Criar conta
+            <button
+              type="submit"
+              className="auth-submit-btn"
+              disabled={enviando}
+            >
+              {enviando ? 'Criando conta...' : 'Criar conta'}
             </button>
           </form>
         </div>
@@ -163,7 +162,7 @@ export default function Cadastro() {
       {/*Pop-up de Erro caso falte preencher ou as senhas sejam diferentes*/}
       {erroAberto && (
         <div className="auth-modal-overlay" onClick={() => setErroAberto(false)}>
-          <div className="popup-erro" onClick={() => setErroAberto(false)}>
+          <div className="popup-erro" onClick={(e) => e.stopPropagation()}>
             <h3 className="popup-erro__titulo">Algo de errado aconteceu!</h3>
             <p className="popup-erro__subtitulo">Mantenha a calma pirata</p>
             <img
