@@ -1,12 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, ArrowRight, ChevronDown, TrendingUp } from 'lucide-react'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
 import ConfirmModal from '../../components/ConfirmModal'
+import api from '../../services/api'
 import '../Home/Home.css'
 import './Resultados.css'
 import './ResultadosGerais.css'
+
+const OPCOES_DIRETORIA = [
+  'Geral',
+  'Presidência',
+  'Projetos',
+  'Comercial',
+  'Marketing',
+  'Gestão de Pessoas',
+  'Financeiro',
+]
 
 const GRUPOS_PESQUISAS = [
   {
@@ -59,10 +70,14 @@ const GRUPOS_PESQUISAS = [
   },
 ]
 
+function formatarNumero(valor) {
+  if (valor === null || valor === undefined) return '0,0'
+  return Number(valor).toFixed(2).replace(/\.?0+$/, '').replace('.', ',')
+}
+
 export default function ResultadosGerais() {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
 
   const [etapa, setEtapa] = useState('listagem')
   const [divisao, setDivisao] = useState('Trimestre')
@@ -71,6 +86,63 @@ export default function ResultadosGerais() {
 
   const [cardMarcadoId, setCardMarcadoId] = useState(null)
   const [tituloEscolhido, setTituloEscolhido] = useState('')
+
+  // Estados da integração com /comparacao
+  const [titulosApi, setTitulosApi] = useState([])
+  const [areaComparacao, setAreaComparacao] = useState('Geral')
+  const [menuAreaOpen, setMenuAreaOpen] = useState(false)
+  const [resultadoComparacao, setResultadoComparacao] = useState(null)
+
+  // Busca os títulos e edições disponíveis no back-end
+  useEffect(() => {
+    api
+      .get('/comparacao/titulos')
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setTitulosApi(res.data)
+        }
+      })
+      .catch(() => {
+        setTitulosApi([])
+      })
+  }, [])
+
+  // Consulta os dados comparativos quando entra na etapa 'comparando'
+  useEffect(() => {
+    if (etapa !== 'comparando') return
+
+    // Descobre os IDs das duas edições a comparar (da API ou fallback para 2 e 3)
+    const grupoApi =
+      titulosApi.find((t) => t.titulo === tituloEscolhido) ||
+      titulosApi.find((t) => t.pode_comparar)
+
+    let idAnterior = 2
+    let idAtual = 3
+
+    if (grupoApi && grupoApi.edicoes?.length >= 2) {
+      const edicoesOrdenadas = [...grupoApi.edicoes].sort((a, b) =>
+        a.data_inicio.localeCompare(b.data_inicio)
+      )
+      idAnterior = edicoesOrdenadas[edicoesOrdenadas.length - 2].id_pesq
+      idAtual = edicoesOrdenadas[edicoesOrdenadas.length - 1].id_pesq
+    }
+
+    const params = { anterior: idAnterior, atual: idAtual }
+    if (areaComparacao !== 'Geral') {
+      params.area = areaComparacao
+    }
+
+    api
+      .get('/comparacao', { params })
+      .then((res) => {
+        if (res.data) {
+          setResultadoComparacao(res.data)
+        }
+      })
+      .catch(() => {
+        setResultadoComparacao(null)
+      })
+  }, [etapa, tituloEscolhido, areaComparacao, titulosApi])
 
   const selecionarTituloPesquisa = (pesquisa) => {
     setCardMarcadoId(pesquisa.id)
@@ -90,6 +162,35 @@ export default function ResultadosGerais() {
     }
   }
 
+  // Valores exibidos no card comparativo (usa retorno da API quando disponível)
+  const dadosInsuficientes = resultadoComparacao?.dados_insuficientes === true
+  const respPrimeira = resultadoComparacao?.anterior?.participantes ?? 10
+  const respSegunda = resultadoComparacao?.atual?.participantes ?? 11
+  const mediaPrimeira = resultadoComparacao?.anterior?.media_geral ?? 2.73
+  const faixaPrimeira = resultadoComparacao?.anterior?.faixa_geral ?? 'Atenção'
+  const mediaSegunda = resultadoComparacao?.atual?.media_geral ?? 4.03
+  const faixaSegunda = resultadoComparacao?.atual?.faixa_geral ?? 'Excelente'
+  const crescimento = resultadoComparacao?.diferenca_geral ?? 1.3
+  const tendenciaTexto =
+    resultadoComparacao?.tendencia === 'Piora'
+      ? 'Queda nos indicadores identificada'
+      : resultadoComparacao?.tendencia === 'Estável'
+      ? 'Estabilidade nos indicadores identificada'
+      : 'Evolução positiva identificada'
+
+  const listaVariacoes =
+    resultadoComparacao?.variacoes?.length > 0
+      ? resultadoComparacao.variacoes.map((v) => ({
+          id: v.id_perg,
+          nome: v.eixo || v.pergunta,
+          diferenca: v.diferenca,
+        }))
+      : [
+          { id: 1, nome: 'Alinhamento das atividades', diferenca: 1.2 },
+          { id: 2, nome: 'Distribuição de tarefas', diferenca: 1.4 },
+          { id: 3, nome: 'Tempo para realização', diferenca: 1.4 },
+        ]
+
   return (
     <div className="general-results-page">
       <Header onOpenSidebar={() => setSidebarOpen(true)} />
@@ -97,7 +198,6 @@ export default function ResultadosGerais() {
 
       <main className="general-results-container">
         {etapa === 'comparando' ? (
-          /* TELA DE COMPARATIVO DE PESQUISAS */
           <section className="comparison-figma-card">
             <div className="comparison-figma-top">
               <div>
@@ -106,7 +206,9 @@ export default function ResultadosGerais() {
                 </h1>
                 <p className="comparison-figma-subtitle">
                   Pesquisa:{' '}
-                  {tituloEscolhido || 'Como está o clima na sua rotina?'}
+                  {resultadoComparacao?.titulo ||
+                    tituloEscolhido ||
+                    'Como está o clima na sua rotina?'}
                 </p>
 
                 <div className="comparison-period-section">
@@ -125,111 +227,199 @@ export default function ResultadosGerais() {
                 </div>
               </div>
 
-              <div className="comparison-responses-counts">
-                <div className="comparison-count-block">
-                  <span className="comparison-small-label">
-                    Primeira pesquisa
+              <div className="comparison-top-right">
+                {/* Seletor de filtro por diretoria */}
+                <div className="results-filter-row" style={{ marginBottom: 8 }}>
+                  <span
+                    className="comparison-small-label"
+                    style={{ color: '#333333' }}
+                  >
+                    Diretoria:
                   </span>
-                  <strong className="comparison-count-number">
-                    10 Respostas
-                  </strong>
-                </div>
-                <div className="comparison-count-block">
-                  <span className="comparison-small-label">
-                    Segunda pesquisa
-                  </span>
-                  <strong className="comparison-count-number">
-                    11 Respostas
-                  </strong>
-                </div>
-              </div>
-            </div>
+                  <div className="results-filter-dropdown-wrap">
+                    <button
+                      type="button"
+                      className="results-filter-btn"
+                      onClick={() => setMenuAreaOpen(!menuAreaOpen)}
+                    >
+                      <span>{areaComparacao}</span>
+                      <ChevronDown size={20} color="#FFFFFF" />
+                    </button>
 
-            {/* Médias e Crescimento (+1,3) */}
-            <div className="comparison-averages-row">
-              <div className="comparison-avg-col">
-                <span className="comparison-small-label">
-                  Média da primeira pesquisa
-                </span>
-                <strong className="comparison-avg-value">2,73</strong>
-                <span className="comparison-avg-faixa">(Atenção)</span>
-              </div>
-
-              <div className="comparison-avg-col">
-                <span className="comparison-small-label">
-                  Média da segunda pesquisa
-                </span>
-                <strong className="comparison-avg-value">4,03</strong>
-                <span className="comparison-avg-faixa">(Excelente)</span>
-              </div>
-
-              <div className="comparison-avg-col">
-                <span className="comparison-small-label">Crescimento</span>
-                <strong className="comparison-growth-value">+1,3</strong>
-              </div>
-            </div>
-
-            {/* Barras de Evolução de Satisfação */}
-            <div className="comparison-evolution-section">
-              <h2 className="comparison-section-heading">
-                Evolução de satisfação
-              </h2>
-
-              <div className="comparison-bar-block">
-                <span className="comparison-small-label">Primeira pesquisa</span>
-                <div className="comparison-bar-line">
-                  <div className="comparison-bar-track">
-                    <div
-                      className="comparison-bar-fill comparison-bar-fill--first"
-                      style={{ width: '54.6%' }}
-                    />
+                    {menuAreaOpen && (
+                      <div className="results-filter-menu">
+                        {OPCOES_DIRETORIA.map((area) => (
+                          <button
+                            key={area}
+                            type="button"
+                            className="results-filter-menu__item"
+                            onClick={() => {
+                              setAreaComparacao(area)
+                              setMenuAreaOpen(false)
+                            }}
+                          >
+                            {area}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <span className="comparison-bar-score">2,73/5</span>
                 </div>
-              </div>
 
-              <div className="comparison-bar-block">
-                <span className="comparison-small-label">Segunda pesquisa</span>
-                <div className="comparison-bar-line">
-                  <div className="comparison-bar-track">
-                    <div
-                      className="comparison-bar-fill comparison-bar-fill--second"
-                      style={{ width: '80.6%' }}
-                    />
+                {!dadosInsuficientes && (
+                  <div className="comparison-responses-counts">
+                    <div className="comparison-count-block">
+                      <span className="comparison-small-label">
+                        Primeira pesquisa
+                      </span>
+                      <strong className="comparison-count-number">
+                        {respPrimeira} Respostas
+                      </strong>
+                    </div>
+                    <div className="comparison-count-block">
+                      <span className="comparison-small-label">
+                        Segunda pesquisa
+                      </span>
+                      <strong className="comparison-count-number">
+                        {respSegunda} Respostas
+                      </strong>
+                    </div>
                   </div>
-                  <span className="comparison-bar-score">4,03/5</span>
-                </div>
+                )}
               </div>
             </div>
 
-            {/* Principais mudanças identificadas */}
-            <div className="comparison-changes-section">
-              <h2 className="comparison-section-heading">
-                Principais mudanças identificadas
-              </h2>
-
-              <div className="comparison-changes-list">
-                <div className="comparison-change-item">
-                  <span>Alinhamento das atividades</span>
-                  <span className="comparison-change-badge">+ 1,2</span>
-                </div>
-                <div className="comparison-change-item">
-                  <span>Distribuição de tarefas</span>
-                  <span className="comparison-change-badge">+ 1,4</span>
-                </div>
-                <div className="comparison-change-item">
-                  <span>Tempo para realização</span>
-                  <span className="comparison-change-badge">+ 1,4</span>
-                </div>
+            {/* Bloco de proteção de anonimato quando houver menos de 3 respostas */}
+            {dadosInsuficientes ? (
+              <div className="insufficient-data-box">
+                <h2 className="insufficient-data-box__title">
+                  Quantidade de respostas insuficiente
+                </h2>
+                <p className="insufficient-data-box__text">
+                  {resultadoComparacao?.mensagem ||
+                    'Não é possível exibir os resultados porque a quantidade de respostas ainda é insuficiente (mínimo de 3 participantes) para preservar o anonimato dos participantes.'}
+                </p>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="comparison-averages-row">
+                  <div className="comparison-avg-col">
+                    <span className="comparison-small-label">
+                      Média da primeira pesquisa
+                    </span>
+                    <strong className="comparison-avg-value">
+                      {formatarNumero(mediaPrimeira)}
+                    </strong>
+                    <span className="comparison-avg-faixa">
+                      ({faixaPrimeira})
+                    </span>
+                  </div>
 
-            {/* Rodapé: Evolução positiva identificada */}
+                  <div className="comparison-avg-col">
+                    <span className="comparison-small-label">
+                      Média da segunda pesquisa
+                    </span>
+                    <strong className="comparison-avg-value">
+                      {formatarNumero(mediaSegunda)}
+                    </strong>
+                    <span className="comparison-avg-faixa">
+                      ({faixaSegunda})
+                    </span>
+                  </div>
+
+                  <div className="comparison-avg-col">
+                    <span className="comparison-small-label">Crescimento</span>
+                    <strong
+                      className="comparison-growth-value"
+                      style={{
+                        color: crescimento < 0 ? '#E02C00' : '#2CA500',
+                      }}
+                    >
+                      {crescimento > 0 ? '+' : ''}
+                      {formatarNumero(crescimento)}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="comparison-evolution-section">
+                  <h2 className="comparison-section-heading">
+                    Evolução de satisfação
+                  </h2>
+
+                  <div className="comparison-bar-block">
+                    <span className="comparison-small-label">
+                      Primeira pesquisa
+                    </span>
+                    <div className="comparison-bar-line">
+                      <div className="comparison-bar-track">
+                        <div
+                          className="comparison-bar-fill comparison-bar-fill--first"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (Number(mediaPrimeira) / 5) * 100
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="comparison-bar-score">
+                        {formatarNumero(mediaPrimeira)}/5
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="comparison-bar-block">
+                    <span className="comparison-small-label">
+                      Segunda pesquisa
+                    </span>
+                    <div className="comparison-bar-line">
+                      <div className="comparison-bar-track">
+                        <div
+                          className="comparison-bar-fill comparison-bar-fill--second"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (Number(mediaSegunda) / 5) * 100
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="comparison-bar-score">
+                        {formatarNumero(mediaSegunda)}/5
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="comparison-changes-section">
+                  <h2 className="comparison-section-heading">
+                    Principais mudanças identificadas
+                  </h2>
+
+                  <div className="comparison-changes-list">
+                    {listaVariacoes.map((item) => (
+                      <div key={item.id} className="comparison-change-item">
+                        <span>{item.nome}</span>
+                        <span className="comparison-change-badge">
+                          {item.diferenca > 0 ? '+ ' : ''}
+                          {formatarNumero(item.diferenca)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="comparison-footer-row">
-              <div className="comparison-positive-status">
-                <TrendingUp size={24} />
-                <span>Evolução positiva identificada</span>
-              </div>
+              {!dadosInsuficientes ? (
+                <div className="comparison-positive-status">
+                  <TrendingUp size={24} />
+                  <span>{tendenciaTexto}</span>
+                </div>
+              ) : (
+                <div />
+              )}
 
               <button
                 type="button"
@@ -238,6 +428,7 @@ export default function ResultadosGerais() {
                   setEtapa('listagem')
                   setCardMarcadoId(null)
                   setTituloEscolhido('')
+                  setAreaComparacao('Geral')
                 }}
               >
                 Voltar
@@ -246,7 +437,7 @@ export default function ResultadosGerais() {
           </section>
         ) : (
           <>
-                  <div className="general-top-bar">
+            <div className="general-top-bar">
               {etapa === 'listagem' && (
                 <div className="general-filter-group">
                   <span className="general-top-label">Divisão por:</span>

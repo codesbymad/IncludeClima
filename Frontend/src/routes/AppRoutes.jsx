@@ -6,6 +6,7 @@ import ResponderPesquisa from '../pages/Pesquisa/ResponderPesquisa'
 import CriarPesquisa from '../pages/Pesquisa/CriarPesquisa'
 import Resultados from '../pages/Resultados/Resultados'
 import ResultadosGerais from '../pages/Resultados/ResultadosGerais'
+import Lideranca from '../pages/Lideranca/Lideranca'
 
 export default function AppRoutes() {
   return (
@@ -18,6 +19,7 @@ export default function AppRoutes() {
       <Route path="/pesquisas/criar" element={<CriarPesquisa />} />
       <Route path="/resultados" element={<Resultados />} />
       <Route path="/resultados-gerais" element={<ResultadosGerais />} />
+      <Route path="/lideranca" element={<Lideranca />} />
     </Routes>
   )
 }

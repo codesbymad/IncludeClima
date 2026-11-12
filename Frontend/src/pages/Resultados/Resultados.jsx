@@ -6,6 +6,9 @@ import Sidebar from '../../components/Sidebar'
 import api from '../../services/api'
 import '../Pesquisa/Pesquisa.css'
 import './Resultados.css'
+import './ResultadosGerais.css'
+
+const MINIMO_RESPOSTAS_ANONIMATO = 3
 
 const OPCOES_FILTRO = [
   'Geral',
@@ -150,9 +153,13 @@ const DADOS_POR_DIRETORIA = {
       },
     ],
   },
+  Presidência: { totalRespostas: 1, perguntas: [] },
+  Projetos: { totalRespostas: 2, perguntas: [] },
+  Comercial: { totalRespostas: 2, perguntas: [] },
+  'Gestão de Pessoas': { totalRespostas: 1, perguntas: [] },
+  Financeiro: { totalRespostas: 1, perguntas: [] },
 }
 
-// Classificação de Faixas de Interpretação
 function classificarFaixa(media) {
   if (media < 2.0) return { nome: 'Crítico', classe: 'pill--critico' }
   if (media < 3.0) return { nome: 'Atenção', classe: 'pill--critico' }
@@ -175,26 +182,19 @@ export default function Resultados() {
   const [menuFiltroOpen, setMenuFiltroOpen] = useState(false)
   const [dadosApi, setDadosApi] = useState(null)
 
-  // Tenta sincronizar com o endpoint real do Back-end: GET /pesquisas/:id_pesq/relatorios/medias
+  // Consulta os dados de médias da pesquisa no back-end
   useEffect(() => {
-    const mapAreaParam = {
-      Presidência: 'Presidencia',
-      'Gestão de Pessoas': 'Gestao de Pessoas',
-    }
     const areaQuery =
-      filtroArea === 'Geral'
-        ? ''
-        : `?area=${encodeURIComponent(mapAreaParam[filtroArea] || filtroArea)}`
+      filtroArea === 'Geral' ? '' : `?area=${encodeURIComponent(filtroArea)}`
 
     api
       .get(`/pesquisas/${idPesq}/relatorios/medias${areaQuery}`)
       .then((res) => {
-        if (res.data && res.data.metricas_por_pergunta?.length > 0) {
+        if (res.data) {
           setDadosApi(res.data)
         }
       })
       .catch(() => {
-        // Caso o back-end não esteja rodando localmente, mantém os dados do protótipo do Figma
         setDadosApi(null)
       })
   }, [idPesq, filtroArea])
@@ -203,6 +203,24 @@ export default function Resultados() {
     filtroArea === 'Geral'
       ? DADOS_GERAL
       : DADOS_POR_DIRETORIA[filtroArea] || DADOS_POR_DIRETORIA.Marketing
+
+  // Calcula o total de respostas recebidas (da API ou do mock)
+  const totalRespostasVigente = (() => {
+    if (dadosApi?.metricas_por_pergunta?.length > 0) {
+      const dist = dadosApi.metricas_por_pergunta[0].distribuicao || {}
+      return (
+        (dist[1] || 0) +
+        (dist[2] || 0) +
+        (dist[3] || 0) +
+        (dist[4] || 0) +
+        (dist[5] || 0)
+      )
+    }
+    return dadosAtuais.totalRespostas
+  })()
+
+  const respostasInsuficientes =
+    totalRespostasVigente < MINIMO_RESPOSTAS_ANONIMATO
 
   const handleReaplicarPesquisa = () => {
     navigate('/pesquisas/criar', {
@@ -251,7 +269,6 @@ export default function Resultados() {
       <main className="results-container">
         {abaAtiva === 'perguntas' ? (
           <>
-            {/* Visão da aba "Perguntas" */}
             <section className="card-borda-externa survey-header-card">
               <h1 className="survey-header-card__title">
                 Como está o clima na sua rotina?
@@ -269,7 +286,6 @@ export default function Resultados() {
               </span>
             </section>
 
-            {/* Card Fixo da Diretoria com Alfinete */}
             <section className="card-borda-externa question-card">
               <div className="question-card__top-row">
                 <h2 className="question-card__title">
@@ -312,7 +328,7 @@ export default function Resultados() {
           </>
         ) : (
           <>
-            {/* Filtro Superior Direito: Resultado: Geral / Marketing */}
+            {/* Filtro por Diretoria */}
             <div className="results-filter-row">
               <span className="results-filter-label">Resultado:</span>
               <div className="results-filter-dropdown-wrap">
@@ -345,248 +361,263 @@ export default function Resultados() {
               </div>
             </div>
 
-            {/* Card 1: Total de Respostas */}
-            <section className="card-borda-externa metrics-summary-card">
-              <h1 className="metrics-summary-card__count">
-                {filtroArea === 'Geral'
-                  ? `${dadosAtuais.totalRespostas} Respostas`
-                  : `0${dadosAtuais.totalRespostas} Respostas (${filtroArea})`}
-              </h1>
-              <p className="metrics-summary-card__desc">
-                {filtroArea === 'Geral'
-                  ? 'Com base nas 10 respostas, temos um cenário que indica insatisfação moderada com a organização da rotina e a distribuição das atividades.'
-                  : `Com base nas 0${dadosAtuais.totalRespostas} respostas dadas pela diretoria de ${filtroArea}, temos um cenário que indica insatisfação moderada com a organização da rotina e a distribuição das atividades.`}
-              </p>
-            </section>
-
-            {/* Card de Distribuição por Diretoria*/}
-            {filtroArea === 'Geral' && (
-              <section className="card-borda-externa metrics-chart-card">
-                <div className="question-card__top-row">
-                  <h2 className="metrics-chart-card__title">
-                    Qual sua área de atuação/ diretoria na Include?
+            {/* Verifica se atingiu o mínimo de 3 respostas antes de exibir os gráficos */}
+            {respostasInsuficientes ? (
+              <section className="card-borda-externa metrics-summary-card">
+                <div
+                  className="insufficient-data-box"
+                  style={{ margin: 0, width: '100%' }}
+                >
+                  <h2 className="insufficient-data-box__title">
+                    Quantidade de respostas insuficiente
                   </h2>
-                  <Pin size={28} className="question-card__pin-icon" />
-                </div>
-
-                <div className="chart-wrapper">
-                  <span className="chart-y-label">% Respostas</span>
-                  <div className="chart-bars-container">
-                    {DIRETORIAS_PARTICIPACAO.map((dir) => (
-                      <div key={dir.nome} className="chart-bar-group">
-                        <span className="chart-bar-label">{dir.nome}</span>
-                        <div className="chart-bar-row">
-                          <div className="chart-bar-track">
-                            <div
-                              className="chart-bar-fill"
-                              style={{
-                                width: `${dir.percentual}%`,
-                                backgroundColor: '#FF9860',
-                              }}
-                            />
-                          </div>
-                          <span className="chart-bar-percent">
-                            {dir.percentual}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="insufficient-data-box__text">
+                    {filtroArea === 'Geral'
+                      ? 'Não é possível exibir os resultados desta pesquisa porque a quantidade de respostas ainda é insuficiente (mínimo de 3 participantes) para preservar o anonimato.'
+                      : `Não é possível exibir os resultados da diretoria de ${filtroArea} porque a quantidade de respostas ainda é insuficiente (mínimo de 3 participantes) para preservar o anonimato dos participantes.`}
+                  </p>
                 </div>
               </section>
-            )}
+            ) : (
+              <>
+                <section className="card-borda-externa metrics-summary-card">
+                  <h1 className="metrics-summary-card__count">
+                    {filtroArea === 'Geral'
+                      ? `${totalRespostasVigente} Respostas`
+                      : `0${totalRespostasVigente} Respostas (${filtroArea})`}
+                  </h1>
+                  <p className="metrics-summary-card__desc">
+                    {filtroArea === 'Geral'
+                      ? 'Com base nas 10 respostas, temos um cenário que indica insatisfação moderada com a organização da rotina e a distribuição das atividades.'
+                      : `Com base nas 0${totalRespostasVigente} respostas dadas pela diretoria de ${filtroArea}, temos um cenário que indica insatisfação moderada com a organização da rotina e a distribuição das atividades.`}
+                  </p>
+                </section>
 
-            {/* Cards das Perguntas */}
-            {dadosAtuais.perguntas.map((pergunta) => {
-              const faixaInfo = classificarFaixa(pergunta.media)
-              return (
-                <section
-                  key={pergunta.id}
-                  className="card-borda-externa metrics-chart-card"
-                >
-                  <h2 className="metrics-chart-card__title">
-                    {pergunta.enunciado}
-                  </h2>
+                {filtroArea === 'Geral' && (
+                  <section className="card-borda-externa metrics-chart-card">
+                    <div className="question-card__top-row">
+                      <h2 className="metrics-chart-card__title">
+                        Qual sua área de atuação/ diretoria na Include?
+                      </h2>
+                      <Pin size={28} className="question-card__pin-icon" />
+                    </div>
 
-                  <div className="metrics-question-content-row">
                     <div className="chart-wrapper">
                       <span className="chart-y-label">% Respostas</span>
-
                       <div className="chart-bars-container">
-                        {pergunta.distribuicao.map((item) => (
-                          <div key={item.label} className="chart-bar-group">
-                            <span className="chart-bar-label">
-                              {item.label}
-                            </span>
+                        {DIRETORIAS_PARTICIPACAO.map((dir) => (
+                          <div key={dir.nome} className="chart-bar-group">
+                            <span className="chart-bar-label">{dir.nome}</span>
                             <div className="chart-bar-row">
                               <div className="chart-bar-track">
                                 <div
                                   className="chart-bar-fill"
                                   style={{
-                                    width: `${item.percentual}%`,
-                                    backgroundColor: item.cor,
+                                    width: `${dir.percentual}%`,
+                                    backgroundColor: '#FF9860',
                                   }}
                                 />
                               </div>
                               <span className="chart-bar-percent">
-                                {String(item.percentual).replace('.', ',')}%
+                                {dir.percentual}%
                               </span>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
+                  </section>
+                )}
 
-                    {/* Coluna da Direita: Média de satisfação + Pílula colorida + Faixa */}
-                    <div className="metrics-average-box">
-                      <span className="metrics-average-box__label">
-                        Média de satisfação
-                      </span>
-                      <div
-                        className={`metrics-average-pill ${faixaInfo.classe}`}
-                      >
-                        {formatarNota(pergunta.media)}/5
-                      </div>
-                      <span className="metrics-average-box__faixa">
-                        {faixaInfo.nome}
-                      </span>
-                    </div>
-                  </div>
-                </section>
-              )
-            })}
+                {dadosAtuais.perguntas.map((pergunta) => {
+                  const faixaInfo = classificarFaixa(pergunta.media)
+                  return (
+                    <section
+                      key={pergunta.id}
+                      className="card-borda-externa metrics-chart-card"
+                    >
+                      <h2 className="metrics-chart-card__title">
+                        {pergunta.enunciado}
+                      </h2>
 
-            {/* Card de Resumo Geral ou Resumo da Diretoria */}
-            <section className="card-borda-externa metrics-bottom-summary-card">
-              <h2 className="metrics-bottom-summary__title">
-                {filtroArea === 'Geral'
-                  ? 'Resumo geral dos resultados dessa pesquisa'
-                  : `Resumo dos resultados da diretoria de ${filtroArea}`}
-              </h2>
+                      <div className="metrics-question-content-row">
+                        <div className="chart-wrapper">
+                          <span className="chart-y-label">% Respostas</span>
 
-              <div className="metrics-kpis-row">
-                <div className="metrics-kpi-item">
-                  <span className="metrics-kpi-value">
-                    {dadosAtuais.totalRespostas}
-                  </span>
-                  <span className="metrics-kpi-label">Participantes</span>
-                </div>
-
-                <div className="metrics-kpi-item">
-                  <span className="metrics-kpi-value">
-                    {dadosAtuais.discordancia}
-                  </span>
-                  <span className="metrics-kpi-label">
-                    Respostas de
-                    <br />
-                    discordância
-                  </span>
-                </div>
-
-                <div className="metrics-kpi-item">
-                  <span className="metrics-kpi-value">
-                    {dadosAtuais.concordancia}
-                  </span>
-                  <span className="metrics-kpi-label">
-                    Respostas de
-                    <br />
-                    concordância
-                  </span>
-                </div>
-
-                <div className="metrics-kpi-item">
-                  <div
-                    className={`metrics-average-pill metrics-average-pill--large ${
-                      classificarFaixa(dadosAtuais.mediaGeral).classe
-                    }`}
-                  >
-                    {String(
-                      dadosApi?.media_geral || dadosAtuais.mediaGeral
-                    ).replace('.', ',')}
-                    /5
-                  </div>
-                  <span className="metrics-kpi-label">
-                    {filtroArea === 'Geral'
-                      ? 'Índice geral de\nsatisfação'
-                      : `Índice de satisfação\n${filtroArea}`}
-                  </span>
-                </div>
-              </div>
-
-              {filtroArea === 'Geral' ? (
-                
-                <div className="metrics-general-distribution">
-                  <h3 className="metrics-Distribution-subtitle">
-                    Distribuição das respostas
-                  </h3>
-                  <div className="chart-wrapper">
-                    <span className="chart-y-label">% Respostas</span>
-                    <div className="chart-bars-container chart-bars-container--wide">
-                      {DADOS_GERAL.distribuicaoGeral.map((item) => (
-                        <div key={item.label} className="chart-bar-group">
-                          <span className="chart-bar-label">{item.label}</span>
-                          <div className="chart-bar-row">
-                            <div className="chart-bar-track chart-bar-track--wide">
-                              <div
-                                className="chart-bar-fill"
-                                style={{
-                                  width: `${item.percentual}%`,
-                                  backgroundColor: item.cor,
-                                }}
-                              />
-                            </div>
-                            <span className="chart-bar-percent">
-                              {item.percentual}%
-                            </span>
+                          <div className="chart-bars-container">
+                            {pergunta.distribuicao.map((item) => (
+                              <div key={item.label} className="chart-bar-group">
+                                <span className="chart-bar-label">
+                                  {item.label}
+                                </span>
+                                <div className="chart-bar-row">
+                                  <div className="chart-bar-track">
+                                    <div
+                                      className="chart-bar-fill"
+                                      style={{
+                                        width: `${item.percentual}%`,
+                                        backgroundColor: item.cor,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="chart-bar-percent">
+                                    {String(item.percentual).replace('.', ',')}%
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
+
+                        <div className="metrics-average-box">
+                          <span className="metrics-average-box__label">
+                            Média de satisfação
+                          </span>
+                          <div
+                            className={`metrics-average-pill ${faixaInfo.classe}`}
+                          >
+                            {formatarNota(pergunta.media)}/5
+                          </div>
+                          <span className="metrics-average-box__faixa">
+                            {faixaInfo.nome}
+                          </span>
+                        </div>
+                      </div>
+                    </section>
+                  )
+                })}
+
+                <section className="card-borda-externa metrics-bottom-summary-card">
+                  <h2 className="metrics-bottom-summary__title">
+                    {filtroArea === 'Geral'
+                      ? 'Resumo geral dos resultados dessa pesquisa'
+                      : `Resumo dos resultados da diretoria de ${filtroArea}`}
+                  </h2>
+
+                  <div className="metrics-kpis-row">
+                    <div className="metrics-kpi-item">
+                      <span className="metrics-kpi-value">
+                        {totalRespostasVigente}
+                      </span>
+                      <span className="metrics-kpi-label">Participantes</span>
+                    </div>
+
+                    <div className="metrics-kpi-item">
+                      <span className="metrics-kpi-value">
+                        {dadosAtuais.discordancia}
+                      </span>
+                      <span className="metrics-kpi-label">
+                        Respostas de
+                        <br />
+                        discordância
+                      </span>
+                    </div>
+
+                    <div className="metrics-kpi-item">
+                      <span className="metrics-kpi-value">
+                        {dadosAtuais.concordancia}
+                      </span>
+                      <span className="metrics-kpi-label">
+                        Respostas de
+                        <br />
+                        concordância
+                      </span>
+                    </div>
+
+                    <div className="metrics-kpi-item">
+                      <div
+                        className={`metrics-average-pill metrics-average-pill--large ${
+                          classificarFaixa(dadosAtuais.mediaGeral).classe
+                        }`}
+                      >
+                        {String(
+                          dadosApi?.media_geral || dadosAtuais.mediaGeral
+                        ).replace('.', ',')}
+                        /5
+                      </div>
+                      <span className="metrics-kpi-label">
+                        {filtroArea === 'Geral'
+                          ? 'Índice geral de\nsatisfação'
+                          : `Índice de satisfação\n${filtroArea}`}
+                      </span>
                     </div>
                   </div>
-                </div>
-              ) : (
 
-                <div className="metrics-area-comparison">
-                  <h3 className="metrics-Distribution-subtitle">
-                    Comparativo em relação a média geral
-                  </h3>
-                  <p className="metrics-comparison-hint">
-                    Comparação das médias por pergunta
-                  </p>
+                  {filtroArea === 'Geral' ? (
+                    <div className="metrics-general-distribution">
+                      <h3 className="metrics-Distribution-subtitle">
+                        Distribuição das respostas
+                      </h3>
+                      <div className="chart-wrapper">
+                        <span className="chart-y-label">% Respostas</span>
+                        <div className="chart-bars-container chart-bars-container--wide">
+                          {DADOS_GERAL.distribuicaoGeral.map((item) => (
+                            <div key={item.label} className="chart-bar-group">
+                              <span className="chart-bar-label">
+                                {item.label}
+                              </span>
+                              <div className="chart-bar-row">
+                                <div className="chart-bar-track chart-bar-track--wide">
+                                  <div
+                                    className="chart-bar-fill"
+                                    style={{
+                                      width: `${item.percentual}%`,
+                                      backgroundColor: item.cor,
+                                    }}
+                                  />
+                                </div>
+                                <span className="chart-bar-percent">
+                                  {item.percentual}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="metrics-area-comparison">
+                      <h3 className="metrics-Distribution-subtitle">
+                        Comparativo em relação a média geral
+                      </h3>
+                      <p className="metrics-comparison-hint">
+                        Comparação das médias por pergunta
+                      </p>
 
-                  <table className="metrics-comparison-table">
-                    <thead>
-                      <tr>
-                        <th>Pergunta</th>
-                        <th>Geral</th>
-                        <th>{filtroArea}</th>
-                        <th>Diferença</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dadosAtuais.perguntas.map((p) => (
-                        <tr key={p.id}>
-                          <td>{p.curto}</td>
-                          <td>
-                            {p.mediaGeralRef.toFixed(2).replace('.', ',')}
-                          </td>
-                          <td>{p.media.toFixed(2).replace('.', ',')}</td>
-                          <td
-                            className={
-                              p.positiva ? 'diff-positive' : 'diff-negative'
-                            }
-                          >
-                            {p.diferenca}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+                      <table className="metrics-comparison-table">
+                        <thead>
+                          <tr>
+                            <th>Pergunta</th>
+                            <th>Geral</th>
+                            <th>{filtroArea}</th>
+                            <th>Diferença</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dadosAtuais.perguntas.map((p) => (
+                            <tr key={p.id}>
+                              <td>{p.curto}</td>
+                              <td>
+                                {p.mediaGeralRef.toFixed(2).replace('.', ',')}
+                              </td>
+                              <td>{p.media.toFixed(2).replace('.', ',')}</td>
+                              <td
+                                className={
+                                  p.positiva ? 'diff-positive' : 'diff-negative'
+                                }
+                              >
+                                {p.diferenca}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
 
-            {/* Card Final: "Deseja reaplicar esta pesquisa? */}
             <section className="card-borda-externa metrics-reapply-card">
               <h2 className="metrics-bottom-summary__title">
                 Deseja reaplicar esta pesquisa?

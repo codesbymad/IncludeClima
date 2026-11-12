@@ -8,6 +8,12 @@ export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
   const [modalSairOpen, setModalSairOpen] = useState(false)
 
+  // Verifica se o usuário logado possui permissão de líder
+  const usuarioSalvo = localStorage.getItem('includeclima_user')
+  const usuario = usuarioSalvo ? JSON.parse(usuarioSalvo) : null
+  const mostrarOpcoesLider =
+    !usuario || usuario.isLider !== false && usuario.idLider !== false
+
   const handleNavigate = (path) => {
     navigate(path)
     onClose()
@@ -57,6 +63,15 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             Criação de pesquisas
           </button>
+          {mostrarOpcoesLider && (
+            <button
+              type="button"
+              className="app-sidebar__link"
+              onClick={() => handleNavigate('/lideranca')}
+            >
+              Liderança
+            </button>
+          )}
         </nav>
 
         <div className="app-sidebar__footer">
@@ -71,13 +86,14 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
       </aside>
 
-      {/* Pop-up do Figma novo: "Deseja sair do IncludeClima pirata?" */}
       <ConfirmModal
         isOpen={modalSairOpen}
         title="Deseja sair do IncludeClima pirata?"
         confirmText="Sair"
         cancelText="Cancelar"
         onConfirm={() => {
+          localStorage.removeItem('includeclima_token')
+          localStorage.removeItem('includeclima_user')
           setModalSairOpen(false)
           onClose()
           navigate('/login')
