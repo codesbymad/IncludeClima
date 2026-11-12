@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Clock, ArrowRight } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+import { listarHistorico } from '../../services/pesquisaService'
+import { formatarIntervalo } from '../../utils/formatadores'
+import { mensagemDeErro } from '../../utils/erros'
 import Header from '../../components/Header'
 import Sidebar from '../../components/Sidebar'
 import ConfirmModal from '../../components/ConfirmModal'
@@ -15,84 +19,33 @@ export default function Home() {
   const [modalRespondidaOpen, setModalRespondidaOpen] = useState(false)
   const [modalPendenteOpen, setModalPendenteOpen] = useState(false)
 
-  // 6 pesquisas
-  const pesquisasRespondidas = [
-    {
-      id: 1,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 2,
-      titulo: 'Ventos de liderança: como está essa relação?',
-      descricao: 'Relação com a liderança',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 3,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 4,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 5,
-      titulo: 'Ventos de liderança: como está essa relação?',
-      descricao: 'Clareza e eficiência da comunicação',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 6,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Oportunidades de crescimento e benefícios',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-  ]
+  const { usuario } = useAuth()
+  const [pesquisas, setPesquisas] = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [erroLista, setErroLista] = useState('')
+  const [pesquisaSelecionada, setPesquisaSelecionada] = useState(null)
 
-  const pesquisasPendentes = [
-    {
-      id: 101,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 102,
-      titulo: 'Ventos de liderança: como está essa relação?',
-      descricao: 'Relação com a liderança',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 103,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 104,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 105,
-      titulo: 'Como está o clima na sua rotina?',
-      descricao: 'Pesquisa sobre satisfação com rotina e tarefas',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-    {
-      id: 106,
-      titulo: 'Ventos de liderança: como está essa relação?',
-      descricao: 'Desafios enfrentados no dia a dia',
-      periodo: '12/10/2026 - 05/11/2026',
-    },
-  ]
+  useEffect(() => {
+    listarHistorico()
+      .then(setPesquisas)
+      .catch((erro) =>
+        setErroLista(mensagemDeErro(erro, 'Não foi possível carregar as pesquisas.'))
+      )
+      .finally(() => setCarregando(false))
+  }, [])
+
+  const converter = (p) => ({
+    id: p.id_pesq,
+    titulo: p.titulo,
+    descricao: `Situação: ${p.situacao}`,
+    periodo: formatarIntervalo(p.data_inicio, p.data_fim)
+  })
+
+  const pesquisasRespondidas = pesquisas.filter((p) => p.ja_respondeu).map(converter)
+  const pesquisasPendentes = pesquisas
+    .filter((p) => !p.ja_respondeu && p.situacao === 'Ativa')
+    .map(converter)
+  const listaAtual = activeTab === 'respondidas' ? pesquisasRespondidas : pesquisasPendentes
 
   return (
     <div className="home-page">
@@ -147,6 +100,11 @@ export default function Home() {
         </div>
 
         <div className="home-board-card">
+          {carregando && <p>Carregando pesquisas...</p>}
+          {erroLista && <p>{erroLista}</p>}
+          {!carregando && !erroLista && listaAtual.length === 0 && (
+            <p>Nenhuma pesquisa nesta aba.</p>
+          )}
           {activeTab === 'respondidas'
             ? pesquisasRespondidas.map((item) => (
                 <div key={item.id} className="survey-card survey-card--answered">
@@ -161,14 +119,19 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="survey-card__arrow-btn"
-                    onClick={() => setModalRespondidaOpen(true)}
-                    title="Conferir resultados"
-                  >
-                    <ArrowRight size={32} color="#000000" />
-                  </button>
+                  {usuario?.isLider && (
+                    <button
+                      type="button"
+                      className="survey-card__arrow-btn"
+                      onClick={() => {
+                        setPesquisaSelecionada(item)
+                        setModalRespondidaOpen(true)
+                      }}
+                      title="Conferir resultados"
+                    >
+                      <ArrowRight size={32} color="#000000" />
+                    </button>
+                  )}
                 </div>
               ))
             : pesquisasPendentes.map((item) => (
@@ -187,7 +150,10 @@ export default function Home() {
                   <button
                     type="button"
                     className="survey-card__arrow-btn"
-                    onClick={() => setModalPendenteOpen(true)}
+                    onClick={() => {
+                      setPesquisaSelecionada(item)
+                      setModalPendenteOpen(true)
+                    }}
                     title="Responder pesquisa"
                   >
                     <ArrowRight size={32} color="#000000" />
@@ -204,7 +170,7 @@ export default function Home() {
         confirmText="Conferir Dados"
         onConfirm={() => {
           setModalRespondidaOpen(false)
-          navigate('/resultados')
+          navigate(`/resultados?id_pesq=${pesquisaSelecionada?.id}`)
         }}
         onCancel={() => setModalRespondidaOpen(false)}
       />
@@ -216,7 +182,7 @@ export default function Home() {
         confirmText="Iniciar pesquisa!"
         onConfirm={() => {
           setModalPendenteOpen(false)
-          navigate('/pesquisa/1/responder')
+          navigate(`/pesquisa/${pesquisaSelecionada?.id}/responder`)
         }}
         onCancel={() => setModalPendenteOpen(false)}
       />
