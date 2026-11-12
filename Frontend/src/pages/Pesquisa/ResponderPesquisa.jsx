@@ -140,10 +140,7 @@ export default function ResponderPesquisa() {
             {pesquisa?.titulo || 'Pesquisa de clima'}
           </h1>
           <p className="survey-header-card__desc">
-            Queremos conhecer sua experiência na Include! Esta pesquisa busca
-            entender seu nível de satisfação, identificando pontos positivos e
-            oportunidades de melhoria. Sua opinião é muito importante para
-            construirmos um ambiente cada vez melhor!
+            {pesquisa?.descricao || 'Queremos conhecer sua experiência na Include! Esta pesquisa busca entender seu nível de satisfação, identificando pontos positivos e oportunidades de melhoria. Sua opinião é muito importante para construirmos um ambiente cada vez melhor!'}
           </p>
           {textoPrazo && (
             <span className="survey-header-card__deadline">{textoPrazo}</span>
@@ -179,9 +176,7 @@ export default function ResponderPesquisa() {
                 return (
                   <section key={pid} className="card-borda-externa question-card">
                     <div className="question-card__top-row">
-                      <h2 className="question-card__title">
-                        Qual sua área de atuação/ diretoria na Include?
-                      </h2>
+                      <h2 className="question-card__title">{p.enunciado}</h2>
                       <Pin size={28} className="question-card__pin-icon" />
                     </div>
                     <div className="question-card__options">
