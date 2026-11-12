@@ -7,6 +7,25 @@ const router = Router()
 
 /**
  * @openapi
+ * /usuarios/lideres:
+ *   get:
+ *     summary: Lista os usuários com perfil de líder (só líder)
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de líderes
+ *       401:
+ *         description: Não autenticado
+ *       403:
+ *         description: Acesso restrito a líderes
+ */
+
+router.get('/lideres', auth, apenasLider, UsuarioController.listarLideres)
+
+/**
+ * @openapi
  * /usuarios/lider:
  *   patch:
  *     summary: Promove (ou rebaixa) um usuário a líder (só líder)

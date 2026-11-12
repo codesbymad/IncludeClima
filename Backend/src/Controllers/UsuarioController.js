@@ -14,3 +14,14 @@ export async function alterarLider(req, res, next) {
         next(error)
     }
 }
+
+export async function listarLideres(req, res, next) {
+    try{
+        const lideres = await UsuarioService.listarLideres()
+    res.json(lideres.map((l) => ({
+        id: l.id_user, nome: l.nome, email: l.email
+    })))
+    } catch (error) {
+        next(error)
+    }
+}
