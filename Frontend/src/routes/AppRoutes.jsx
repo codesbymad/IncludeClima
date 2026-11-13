@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from '../contexts/AuthContext'
+import RotaPrivada from './RotaPrivada'
 import Login from '../pages/Auth/Login'
 import Cadastro from '../pages/Auth/Cadastro'
 import Home from '../pages/Home/Home'
@@ -6,18 +8,72 @@ import ResponderPesquisa from '../pages/Pesquisa/ResponderPesquisa'
 import CriarPesquisa from '../pages/Pesquisa/CriarPesquisa'
 import Resultados from '../pages/Resultados/Resultados'
 import ResultadosGerais from '../pages/Resultados/ResultadosGerais'
+import Lideranca from '../pages/Lideranca/Lideranca'
 
 export default function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/cadastro" element={<Cadastro />} />
-      <Route path="/home" element={<Home />} />
-      <Route path="/pesquisa/:id/responder" element={<ResponderPesquisa />} />
-      <Route path="/pesquisas/criar" element={<CriarPesquisa />} />
-      <Route path="/resultados" element={<Resultados />} />
-      <Route path="/resultados-gerais" element={<ResultadosGerais />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Cadastro />} />
+
+        <Route
+          path="/home"
+          element={
+            <RotaPrivada>
+              <Home />
+            </RotaPrivada>
+          }
+        />
+
+        <Route
+          path="/pesquisa/:id/responder"
+          element={
+            <RotaPrivada>
+              <ResponderPesquisa />
+            </RotaPrivada>
+          }
+        />
+
+        <Route
+          path="/pesquisas/criar"
+          element={
+            <RotaPrivada apenasLider>
+              <CriarPesquisa />
+            </RotaPrivada>
+          }
+        />
+
+        <Route
+          path="/resultados"
+          element={
+            <RotaPrivada apenasLider>
+              <Resultados />
+            </RotaPrivada>
+          }
+        />
+
+        <Route
+          path="/resultados-gerais"
+          element={
+            <RotaPrivada apenasLider>
+              <ResultadosGerais />
+            </RotaPrivada>
+          }
+        />
+
+        <Route
+          path="/lideranca"
+          element={
+            <RotaPrivada apenasLider>
+              <Lideranca />
+            </RotaPrivada>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </AuthProvider>
   )
 }

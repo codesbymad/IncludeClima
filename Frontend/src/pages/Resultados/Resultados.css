@@ -8,7 +8,7 @@
   align-items: center;
 }
 
-/* ABAS PERGUNTAS / RESULTADOS NO TOPO */
+/* ABAS PERGUNTAS / RESULTADOS*/
 .results-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -16,7 +16,7 @@
   width: 92%;
   max-width: 1109px;
   margin-top: 42px;
-  margin-bottom: 36px;
+  margin-bottom: 24px;
 }
 
 .results-tab-btn {
@@ -44,10 +44,69 @@
   gap: 36px;
 }
 
-/* CARD DE RESUMO "10 RESPOSTAS" */
+/* FILTRO DE DIRETORIA*/
+.results-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: -10px;
+}
+
+.results-filter-label {
+  font-family: var(--font-ubuntu);
+  font-size: 28px;
+  color: #FFFFFF;
+}
+
+.results-filter-dropdown-wrap {
+  position: relative;
+}
+
+.results-filter-btn {
+  min-width: 195px;
+  height: 44px;
+  background: #D94111;
+  color: #FFFFFF;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-ubuntu);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.results-filter-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #F9B28E;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+}
+
+.results-filter-menu__item {
+  padding: 8px 14px;
+  font-family: var(--font-ubuntu);
+  font-size: 20px;
+  color: #1A1A1A;
+  text-align: left;
+  border-bottom: 1px solid #333333;
+  cursor: pointer;
+}
+
+.results-filter-menu__item:hover {
+  background: #FA9B6B;
+}
+
+/* CARD DE RESUMO "10 RESPOSTAS"*/
 .metrics-summary-card {
   width: 100%;
-  min-height: 277px;
+  min-height: 240px;
   padding: 28px 48px 36px 36px;
   display: flex;
   flex-direction: column;
@@ -56,11 +115,11 @@
 
 .metrics-summary-card__count {
   font-family: var(--font-jomhuria);
-  font-size: 128px;
+  font-size: 112px;
   font-weight: 400;
-  line-height: 0.78;
+  line-height: 0.8;
   color: #000000;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .metrics-summary-card__desc {
@@ -75,7 +134,7 @@
 /* CARDS DE GRÁFICOS DE BARRAS */
 .metrics-chart-card {
   width: 100%;
-  min-height: 360px;
+  min-height: 350px;
   padding: 35px 48px;
   display: flex;
   flex-direction: column;
@@ -91,11 +150,18 @@
   margin-bottom: 24px;
 }
 
-/* ÁREA DO GRÁFICO "% Respostas" */
+.metrics-question-content-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
 .chart-wrapper {
   display: flex;
   align-items: center;
-  margin-left: 24px;
+  margin-left: 16px;
 }
 
 .chart-y-label {
@@ -114,6 +180,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.chart-bars-container--wide {
+  width: 100%;
 }
 
 .chart-bar-group {
@@ -143,6 +213,12 @@
   overflow: hidden;
 }
 
+.chart-bar-track--wide {
+  width: 680px;
+  max-width: 65vw;
+  height: 26px;
+}
+
 .chart-bar-fill {
   height: 100%;
   transition: width 0.4s ease;
@@ -152,14 +228,178 @@
   font-family: var(--font-ubuntu);
   font-size: 15px;
   color: #000000;
-  min-width: 36px;
+  min-width: 44px;
 }
 
-.likert-option--disabled {
+/* CAIXA DE MÉDIA DE SATISFAÇÃO*/
+.metrics-average-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-right: 48px;
+}
+
+.metrics-average-box__label {
+  font-family: var(--font-ubuntu);
+  font-size: 22px;
   color: #777777;
-  cursor: default;
 }
 
-.likert-option--disabled .likert-radio {
-  border-color: #888888;
+.metrics-average-pill {
+  min-width: 145px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ubuntu);
+  font-size: 24px;
+  font-weight: 700;
+  color: #000000;
+  padding: 0 22px;
+}
+
+.metrics-average-pill--large {
+  font-size: 32px;
+  height: 46px;
+}
+
+.pill--critico {
+  background: #FF9494;
+}
+
+.pill--satisfatorio {
+  background: #D6EFBF;
+}
+
+.metrics-average-box__faixa {
+  font-family: var(--font-ubuntu);
+  font-size: 22px;
+  color: #666666;
+}
+
+/* CARD DE RESUMO GERAL / RESUMO DA DIRETORIA */
+.metrics-bottom-summary-card {
+  width: 100%;
+  padding: 40px 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.metrics-bottom-summary__title {
+  font-family: var(--font-ubuntu);
+  font-size: 28px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.metrics-kpis-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.metrics-kpi-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.metrics-kpi-value {
+  font-family: var(--font-ubuntu);
+  font-size: 36px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.metrics-kpi-label {
+  font-family: var(--font-ubuntu);
+  font-size: 20px;
+  color: #333333;
+  white-space: pre-line;
+  line-height: 1.2;
+}
+
+.metrics-Distribution-subtitle {
+  font-family: var(--font-ubuntu);
+  font-size: 26px;
+  font-weight: 700;
+  color: #1A1A1A;
+  margin-bottom: 12px;
+}
+
+/* TABELA COMPARATIVA DA DIRETORIA */
+.metrics-comparison-hint {
+  font-family: var(--font-ubuntu);
+  font-size: 20px;
+  color: #666666;
+  margin-top: -8px;
+  margin-bottom: 20px;
+}
+
+.metrics-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ubuntu);
+  font-size: 20px;
+}
+
+.metrics-comparison-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+
+.metrics-comparison-table td {
+  padding: 12px 16px;
+  color: #333333;
+}
+
+.diff-positive {
+  color: #4BB543 !important;
+  font-weight: 700;
+}
+
+.diff-negative {
+  color: #D9534F !important;
+  font-weight: 700;
+}
+
+/* CARD REAPLICAR PESQUISA */
+.metrics-reapply-card {
+  width: 100%;
+  padding: 36px 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metrics-reapply-desc {
+  font-family: var(--font-ubuntu);
+  font-size: 22px;
+  color: #222222;
+  line-height: 1.35;
+}
+
+.metrics-reapply-btn {
+  align-self: center;
+  margin-top: 8px;
+  background: #E02C00;
+  color: #FFFFFF;
+  font-family: var(--font-ubuntu);
+  font-size: 18px;
+  padding: 12px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+.metrics-reapply-btn:hover {
+  filter: brightness(1.08);
 }

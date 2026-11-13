@@ -1,9 +1,14 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Menu, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import ConfirmModal from './ConfirmModal'
 import './Navigation.css'
 
 export default function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
+  const { usuario, sair } = useAuth()
+  const [modalSairOpen, setModalSairOpen] = useState(false)
 
   const handleNavigate = (path) => {
     navigate(path)
@@ -40,33 +45,58 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             Home
           </button>
-          <button
-            type="button"
-            className="app-sidebar__link"
-            onClick={() => handleNavigate('/resultados-gerais')}
-          >
-            Resultados Gerais
-          </button>
-          <button
-            type="button"
-            className="app-sidebar__link"
-            onClick={() => handleNavigate('/pesquisas/criar')}
-          >
-            Criação de pesquisas
-          </button>
+
+          {usuario?.isLider && (
+            <>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/resultados-gerais')}
+              >
+                Resultados Gerais
+              </button>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/pesquisas/criar')}
+              >
+                Criação de pesquisas
+              </button>
+              <button
+                type="button"
+                className="app-sidebar__link"
+                onClick={() => handleNavigate('/lideranca')}
+              >
+                Liderança
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="app-sidebar__footer">
           <button
             type="button"
             className="app-sidebar__logout-btn"
-            onClick={() => handleNavigate('/login')}
+            onClick={() => setModalSairOpen(true)}
           >
             <LogOut size={24} />
             <span>Sair da conta</span>
           </button>
         </div>
       </aside>
+
+      <ConfirmModal
+        isOpen={modalSairOpen}
+        title="Deseja sair do IncludeClima pirata?"
+        confirmText="Sair"
+        cancelText="Cancelar"
+        onConfirm={() => {
+          setModalSairOpen(false)
+          sair()
+          handleNavigate('/login')
+        }}
+        onCancel={() => setModalSairOpen(false)}
+      />
     </>
   )
 }

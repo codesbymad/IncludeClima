@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
 import bgLogin from '../../assets/bg-login.png'
 import logoInclude from '../../assets/logo-include.png'
 import barquinhoImg from '../../assets/barquinho.png'
@@ -8,23 +9,53 @@ import './Auth.css'
 
 export default function Cadastro() {
   const navigate = useNavigate()
+  const { cadastrar } = useAuth()
+  const [mensagemErro, setMensagemErro] = useState('')
+  const [erroAberto, setErroAberto] = useState(false)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
-  const [lembrar, setLembrar] = useState(true)
-  const [erroAberto, setErroAberto] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const falha = (texto) => {
+    setMensagemErro(texto)
+    setErroAberto(true)
+  }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!nome.trim() || !email.trim() || !senha.trim() || senha !== confirmarSenha) {
-      setErroAberto(true)
+    if (enviando) return
+    if (!nome.trim() || !email.trim() || !senha.trim()) {
+      falha('Preencha todos os campos.')
       return
     }
-    // após criar conta redireciona para o Login
-    navigate('/login')
+    if (!confirmarSenha) {
+      falha('Confirme sua senha.')
+      return
+    }
+    if (senha.length < 6) {
+      falha('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+    if (senha !== confirmarSenha) {
+      falha('As senhas não coincidem.')
+      return
+    }
+    setEnviando(true)
+    try {
+      await cadastrar(nome.trim(), email.trim(), senha)
+      navigate('/login')
+    } catch (erro) {
+      falha(
+        erro.response
+          ? erro.response.data?.erro || 'Não foi possível criar a conta.'
+          : 'Não foi possível conectar ao servidor.'
+      )
+    } finally {
+      setEnviando(false)
+    }
   }
 
   return (
@@ -117,19 +148,12 @@ export default function Cadastro() {
               </button>
             </div>
 
-            <div className="auth-options-row">
-              <label className="auth-remember">
-                <input
-                  type="checkbox"
-                  checked={lembrar}
-                  onChange={(e) => setLembrar(e.target.checked)}
-                />
-                <span>Lembre-me sempre</span>
-              </label>
-            </div>
-
-            <button type="submit" className="auth-submit-btn">
-              Criar conta
+            <button
+              type="submit"
+              className="auth-submit-btn"
+              disabled={enviando}
+            >
+              {enviando ? 'Criando conta...' : 'Criar conta'}
             </button>
           </form>
         </div>
@@ -138,7 +162,7 @@ export default function Cadastro() {
       {/*Pop-up de Erro caso falte preencher ou as senhas sejam diferentes*/}
       {erroAberto && (
         <div className="auth-modal-overlay" onClick={() => setErroAberto(false)}>
-          <div className="popup-erro" onClick={() => setErroAberto(false)}>
+          <div className="popup-erro" onClick={(e) => e.stopPropagation()}>
             <h3 className="popup-erro__titulo">Algo de errado aconteceu!</h3>
             <p className="popup-erro__subtitulo">Mantenha a calma pirata</p>
             <img
@@ -147,8 +171,7 @@ export default function Cadastro() {
               className="popup-erro__wave-img"
             />
             <p className="popup-erro__texto">
-              o erro pode estar no seu Login ou Senha. Confira suas informações
-              e tente novamente
+              {mensagemErro}
             </p>
           </div>
         </div>

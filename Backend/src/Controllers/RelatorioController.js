@@ -1,4 +1,5 @@
 import pool from '../Config/Database.js';
+import { faixaDaMedia } from '../Utils/Faixa.js';
 
 class RelatorioController {
   // 1. Relatório Quantitativo 
@@ -34,19 +35,12 @@ class RelatorioController {
       query += ` GROUP BY perg.id_perg, perg.eixo, perg.enunciado ORDER BY perg.eixo;`;
       const result = await pool.query(query, values);
 
-      // Função para classificar a faixa
-      const definirFaixa = (media) => {
-        if (media < 2.5) return 'Crítico';
-        if (media < 3.5) return 'Atenção';
-        if (media < 4.5) return 'Satisfatório';
-        return 'Excelente';
-      };
 
       const metricas = result.rows.map(row => ({
         eixo: row.eixo,
         pergunta: row.enunciado,
         media: parseFloat(row.media),
-        faixa: definirFaixa(parseFloat(row.media)),
+        faixa: faixaDaMedia(parseFloat(row.media)),
         desvio_padrao: parseFloat(row.desvio_padrao),
         alerta_variacao: parseFloat(row.desvio_padrao) > 1.2 ? 'Alta divergência de opiniões' : 'Normal',
         distribuicao: {
@@ -78,7 +72,7 @@ class RelatorioController {
 
       return res.status(200).json({
         media_geral: mediaGeralVal,
-        faixa_geral: definirFaixa(mediaGeralVal),
+        faixa_geral: faixaDaMedia(mediaGeralVal),
         metricas_por_pergunta: metricas
       });
 

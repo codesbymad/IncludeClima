@@ -8,7 +8,7 @@ export async function cadastro(req, res, next) {
                 id: usuario.id_user,
                 nome: usuario.nome,
                 email: usuario.email,
-                idLider: usuario.is_lider
+                isLider: usuario.is_lider
             })
     } catch(error){
         next(error)
@@ -26,11 +26,18 @@ export async function login(req, res, next) {
 export async function me(req, res, next) {
     try{
         const usuario = await UsuarioRepository.buscarPorId(req.usuario.id)
-        res.json({
+
+        if(!usuario){
+            return res.status(404).json({
+                erro: 'Usuário não encontrado'
+            })
+        }
+
+        return res.json({
             id: usuario.id_user,
             nome: usuario.nome,
             email: usuario.email,
-            idLider: usuario.is_lider
+            isLider: usuario.is_lider
         })
     } catch(error){
         next(error)
