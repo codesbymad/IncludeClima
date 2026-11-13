@@ -1,5 +1,5 @@
 import pool from '../Config/Database.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt'; 
 
 async function runSeed() {
   try {
@@ -7,10 +7,13 @@ async function runSeed() {
 
     // 1. INSERIR USUÁRIOS
     console.log('1. A verificar/inserir usuarios');
-    
-    const senhaHash = await bcrypt.hash('IncludeClima@2026', 10);
-    const senhaLiderHash = await bcrypt.hash('LiderIncludeClima@2026', 10);
+  
+    const senhaPadraoComum = process.env.SENHA_SEED_COMUM || 'senha_segura_na_env';
+    const senhaPadraoLider = process.env.SENHA_SEED_LIDER || 'senha_lider_segura_na_env';
 
+    const senhaHash = await bcrypt.hash(senhaPadraoComum, 10);
+    const senhaLiderHash = await bcrypt.hash(senhaPadraoLider, 10);
+    
     const emailLider = 'teste.lider.includeclima@gmail.com';
     const checkLider = await pool.query('SELECT id_user FROM usuarios WHERE email = $1', [emailLider]);
     if (checkLider.rows.length === 0) {
@@ -43,7 +46,7 @@ async function runSeed() {
       }
       contadorUser++;
     }
-    console.log('Usuarios configurados com hashes bcrypt.');
+    console.log('Usuarios configurados com hashes bcryptjs.');
 
     // 2. INSERIR PERGUNTAS 
     console.log('2. A verificar Perguntas do Questionario');
@@ -167,9 +170,7 @@ async function runSeed() {
     console.log('Respostas ficticias geradas com sucesso.');
     console.log('==========================================');
     console.log('SEED CONCLUIDO! O banco esta pronto para testes.');
-    console.log('Usuarios validos para login:');
-    console.log(' - teste.lider.includeclima@gmail.com (Líder)');
-    console.log(' - teste.includeclima@gmail.com (Usuário Comum)');
+    console.log('Lembre-se de configurar as senhas no .env se for rodar o seed novamente.');
     console.log('==========================================');
 
   } catch (erro) {
