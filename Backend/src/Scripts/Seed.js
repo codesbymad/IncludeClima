@@ -46,7 +46,7 @@ async function runSeed() {
       }
       contadorUser++;
     }
-    console.log('Usuarios configurados com hashes bcryptjs.');
+    console.log('Usuarios configurados com hashes bcrypt.');
 
     // 2. INSERIR PERGUNTAS 
     console.log('2. A verificar Perguntas do Questionario');
